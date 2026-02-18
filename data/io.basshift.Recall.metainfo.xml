@@ -13,6 +13,20 @@
   </description>
   <launchable type="desktop-id">io.basshift.Recall.desktop</launchable>
   <url type="homepage">https://github.com/basshift/Recall</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main menu</caption>
+      <image>https://raw.githubusercontent.com/basshift/Recall/main/data/screenshots/recall-main-menu.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Classic Easy gameplay</caption>
+      <image>https://raw.githubusercontent.com/basshift/Recall/main/data/screenshots/recall-easy-gameplay.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Victory flow (Harmony rank)</caption>
+      <image>https://raw.githubusercontent.com/basshift/Recall/main/data/screenshots/recall-victory-harmony-s.png</image>
+    </screenshot>
+  </screenshots>
   <releases>
     <release version="0.1.0" date="2026-02-18" />
   </releases>
