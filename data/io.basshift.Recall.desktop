@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Recall
+Comment=A beautiful memory game
+Type=Application
+Exec=recall
+Icon=io.basshift.Recall
+Categories=GNOME;GTK;Game;LogicGame;
+Keywords=Memory;Puzzle;Game;
+StartupNotify=true
+Terminal=false
+X-GNOME-UsesNotifications=false

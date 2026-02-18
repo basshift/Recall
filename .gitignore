@@ -1,0 +1,25 @@
+# Rust
+/target/
+
+# Flatpak build artifacts
+/.flatpak-builder/
+/build-flatpak/
+
+# Local logs
+/logs/
+/.grok/
+
+# Editor/OS noise
+.DS_Store
+*.swp
+*.swo
+
+# Local runtime data
+/records.json
+
+# Private working notes (keep local, do not publish)
+/AGENTS.md
+/journal.md
+/journal.archive.md
+/gemini.md
+/perfil_desarrollador_gnome_clean.md

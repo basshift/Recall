@@ -1,0 +1,28 @@
+[package]
+name = "pangocairo"
+documentation = "https://gtk-rs.org/gtk-rs-core/stable/latest/docs/pangocairo/"
+keywords = ["pango", "cairo", "gtk-rs", "gnome"]
+readme = "README.md"
+description = "Rust bindings for the PangoCairo library"
+authors.workspace = true
+edition.workspace = true
+exclude.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+pangocairo-sys.workspace = true
+libc.workspace = true
+glib.workspace = true
+pango.workspace = true
+cairo-rs.workspace = true
+
+[dev-dependencies]
+gir-format-check.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--generate-link-to-definition"]

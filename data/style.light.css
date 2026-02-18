@@ -1,0 +1,84 @@
+/* Color application for the Light Theme */
+
+/* Contenedor del tablero en modo claro */
+.theme-light .recall-card-container {
+  background-color: rgba(255, 255, 255, 0.20);
+  box-shadow: 0 4px 12px @light_card_shadow;
+}
+
+/* Window-level flat color */
+window.app-window.theme-light {
+  background-color: #f3dfb6;
+}
+
+/* Keep views transparent so the window color is visible */
+window.app-window.theme-light .main-menu-root,
+window.app-window.theme-light .game-root,
+window.app-window.theme-light .victory-root {
+  background-color: transparent;
+  color: @light_app_fg;
+}
+
+/* Color del título en el menú principal */
+.theme-light .main-menu-title {
+  color: @light_title_fg;
+}
+
+.theme-light .memory-intro {
+  color: alpha(@light_app_fg, 0.78);
+}
+
+.theme-light .game-title-main,
+.theme-light .game-title-subtitle {
+  color: @light_app_fg;
+}
+
+.theme-light .app-header label,
+.theme-light .app-header button {
+  color: @light_app_fg;
+}
+
+.theme-light .score-list-page {
+  background-color: alpha(@light_card_active, 0.86);
+  border: 1px solid alpha(@light_header_sep, 0.75);
+}
+
+.theme-light .victory-card {
+  background-color: rgba(255, 255, 255, 0.60);
+  border: 1px solid alpha(@light_header_sep, 0.85);
+  box-shadow: 0 6px 18px alpha(@light_card_shadow, 0.85);
+}
+
+.theme-light .firework-particle.color-0 { color: alpha(@light_app_fg, 0.90); }
+.theme-light .firework-particle.color-1 { color: alpha(@light_app_fg, 0.90); }
+.theme-light .firework-particle.color-2 { color: alpha(@light_app_fg, 0.90); }
+.theme-light .firework-particle.color-3 { color: alpha(@light_app_fg, 0.90); }
+
+/* Estilo de la carta en modo claro */
+.theme-light .recall-card {
+  background-color: rgba(0, 0, 0, 0.10);
+}
+
+/* Hover de la carta */
+.theme-light .recall-card:hover {
+  background-color: rgba(0, 0, 0, 0.30);
+}
+
+/* Estado activo/revelado o emparejado de la carta */
+.theme-light .recall-card:active,
+.theme-light .recall-card.active,
+.theme-light .recall-card.matched {
+  background-color: rgba(255, 255, 255, 0.60);
+}
+
+/* Disable hover painting during final locked sequence */
+.theme-light .no-hover .recall-card:hover,
+.theme-light .no-hover .recall-card:not(.matched):hover,
+.theme-light .no-hover .recall-card:active {
+  background-color: rgba(0, 0, 0, 0.10);
+}
+
+/* Color del simbolo oculto y textos internos de carta en modo claro */
+.theme-light .recall-card-label {
+  color: @light_app_fg;
+}

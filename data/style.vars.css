@@ -1,0 +1,16 @@
+/* Color definitions for the Recall theme */
+
+/* Colors for the Light Theme */
+@define-color light_app_fg #484236;          /* Main text color */
+@define-color light_title_fg #484236;        /* Color for featured titles */
+@define-color light_card_shadow rgba(0, 0, 0, 0.05); /* Soft shadow for elevation */
+@define-color light_card_active #fef3e5;     /* Card color when revealed */
+@define-color light_header_sep #f9d095;      /* Color for separators and soft borders */
+
+/* Colors for the Dark Theme */
+@define-color dark_app_fg #ded8d0;           /* Light text for dark mode */
+@define-color dark_title_fg #ded8d0;         /* Bright titles in dark mode */
+@define-color dark_card_shadow rgba(0, 0, 0, 0.3); /* Deeper shadow for dark mode */
+@define-color dark_card_bg_inner #36230b;    /* Base background for cards in dark mode */
+@define-color dark_card_active #1f1406;      /* Revealed card color (dark) */
+@define-color dark_header_sep #482e0e;       /* Dark borders and separators */

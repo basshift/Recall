@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.basshift.Recall</id>
+  <name>Recall</name>
+  <summary>A beautiful and relaxing memory game</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <description>
+    <p>
+      Recall is a memory game designed to be beautiful, modern, and relaxing.
+      With different modes and difficulties, it's perfect for training your brain.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.basshift.Recall.desktop</launchable>
+  <url type="homepage">https://github.com/basshift/Recall</url>
+  <releases>
+    <release version="0.1.0" date="2026-02-18" />
+  </releases>
+  <provides>
+    <binary>recall</binary>
+  </provides>
+  <content_rating type="oars-1.1" />
+  <developer id="io.basshift">
+    <name>Sebastian Dávila (Basshift)</name>
+  </developer>
+</component>

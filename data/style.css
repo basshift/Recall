@@ -1,0 +1,648 @@
+/* General styles and Recall components */
+
+/* --- Main Menu --- */
+.main-menu-content {
+  min-width: 0;
+  padding: 0;
+}
+
+.main-menu-title {
+  /* font-weight: 800; */
+  /* letter-spacing: 0.2px; */
+  margin-bottom: 10px;
+}
+
+.main-menu-root .main-menu-button {
+  min-width: 164px;
+  min-height: 40px;
+  border-radius: 24px;
+  margin-bottom: 0;
+  padding: 3px 2px;
+  font-weight: 700;
+  transition: transform 0.12s ease, background-color 0.2s ease;
+}
+
+.main-menu-root .main-menu-button:hover {
+  transform: translateY(-1px);
+}
+
+.main-menu-root .main-menu-button:active {
+  transform: translateY(0);
+}
+
+.main-menu-root .main-menu-button:focus-visible {
+  outline: 2px solid alpha(currentColor, 0.35);
+  outline-offset: 2px;
+}
+
+.main-menu-icon {
+  min-width: 192px;
+  min-height: 192px;
+  margin-bottom: 8px;
+}
+
+/* --- Mode / Difficulty Dialogs --- */
+.dialog-header-title {
+  font-weight: 700;
+}
+
+.mode-dialog-content {
+  min-width: 220px;
+}
+
+.mode-dialog-button {
+  min-height: 42px;
+  border-radius: 16px;
+  padding: 3px 10px;
+  font-weight: 700;
+}
+
+/* --- Victory View --- */
+.victory-title {
+  font-weight: 800;
+}
+
+.victory-message {
+  font-weight: 600;
+  opacity: 1;
+}
+
+.victory-card {
+  border-radius: 24px;
+  min-width: 320px;
+}
+
+.victory-rank-art {
+  margin-bottom: 4px;
+}
+
+.firework-particle {
+  font-size: 13px;
+  animation-duration: 800ms;
+  animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  animation-fill-mode: forwards;
+}
+
+.firework-particle.dir-0 { animation-name: firework-out-0; }
+.firework-particle.dir-1 { animation-name: firework-out-1; }
+.firework-particle.dir-2 { animation-name: firework-out-2; }
+.firework-particle.dir-3 { animation-name: firework-out-3; }
+.firework-particle.dir-4 { animation-name: firework-out-4; }
+.firework-particle.dir-5 { animation-name: firework-out-5; }
+.firework-particle.dir-6 { animation-name: firework-out-6; }
+.firework-particle.dir-7 { animation-name: firework-out-7; }
+
+@keyframes firework-out-0 { 0% { transform: translate(0, 0) scale(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(0, -60px) scale(1.2); opacity: 0; } }
+@keyframes firework-out-1 { 0% { transform: translate(0, 0) scale(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(42px, -42px) scale(1.2); opacity: 0; } }
+@keyframes firework-out-2 { 0% { transform: translate(0, 0) scale(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(60px, 0) scale(1.2); opacity: 0; } }
+@keyframes firework-out-3 { 0% { transform: translate(0, 0) scale(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(42px, 42px) scale(1.2); opacity: 0; } }
+@keyframes firework-out-4 { 0% { transform: translate(0, 0) scale(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(0, 60px) scale(1.2); opacity: 0; } }
+@keyframes firework-out-5 { 0% { transform: translate(0, 0) scale(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(-42px, 42px) scale(1.2); opacity: 0; } }
+@keyframes firework-out-6 { 0% { transform: translate(0, 0) scale(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(-60px, 0) scale(1.2); opacity: 0; } }
+@keyframes firework-out-7 { 0% { transform: translate(0, 0) scale(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(-42px, -42px) scale(1.2); opacity: 0; } }
+
+.victory-spark-layer {
+  background: transparent;
+}
+
+/* --- Score / Hall Of Fame --- */
+.memory-dialog-content {
+  min-width: 380px;
+}
+
+.memory-intro {
+  opacity: 0.75;
+  margin-bottom: 8px;
+}
+
+.score-mode-switcher {
+  margin-bottom: 6px;
+}
+
+.score-mode-switcher button {
+  min-width: 80px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.score-list-page {
+  padding: 10px 8px;
+  border-radius: 12px;
+}
+
+.score-table-head {
+  font-weight: 800;
+  opacity: 0.86;
+}
+
+.score-section-title {
+  font-weight: 800;
+  opacity: 0.9;
+  margin-top: 9px;
+  margin-bottom: 4px;
+}
+
+.score-table-row {
+  font-weight: 600;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Application Header (HeaderBar) --- */
+.game-title-main {
+  font-weight: 700;
+}
+
+.game-title-subtitle {
+  font-weight: 500;
+  opacity: 0.78;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+/* Keep native GNOME sizing, but avoid translucent wash over the window background. */
+.app-header,
+.app-header.flat,
+.app-header:backdrop,
+.app-header.flat:backdrop,
+toolbarview,
+toolbarview:backdrop,
+toolbarview > .top-bar,
+toolbarview > .top-bar:backdrop,
+toolbarview > .bottom-bar,
+toolbarview > .bottom-bar:backdrop,
+window.app-window > .titlebar,
+window.app-window > .titlebar > headerbar,
+window.app-window > .titlebar > headerbar:backdrop,
+window.app-window > .titlebar > headerbar > separator,
+window.app-window > .titlebar > headerbar > separator:backdrop {
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  box-shadow: none;
+}
+
+/* --- Board and Cards (Recall Board) --- */
+.recall-board {
+  background-color: transparent;
+}
+
+/* Container that groups the card grid */
+.recall-card-container {
+  padding: 24px;
+  border-radius: 24px;
+}
+
+/* Base style for each card (button) */
+.recall-card {
+  padding: 0;
+  margin: 0;
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: transform 0.12s ease, background-color 0.2s ease, box-shadow 0.12s ease;
+}
+
+/* Hover effect (only for unmatched cards) */
+.recall-card:not(.matched):hover {
+  transform: scale(1.05);
+}
+
+.no-hover .recall-card:hover,
+.no-hover .recall-card:not(.matched):hover {
+  transform: none;
+}
+
+/* Card state when flipped (active) */
+.recall-card.active {
+  background-color: @light_card_active;
+}
+
+.theme-dark .recall-card.active {
+  background-color: @dark_card_active;
+}
+
+/* Card state when successfully matched */
+.recall-card.matched {
+  background-color: @light_card_active;
+  opacity: 1;
+}
+
+.theme-dark .recall-card.matched {
+  background-color: @dark_card_active;
+  opacity: 1;
+}
+
+.victory-pending .recall-card.matched,
+.victory-pending .recall-card,
+.theme-light .victory-pending .recall-card.matched,
+.theme-dark .victory-pending .recall-card.matched {
+  opacity: 1;
+  transition: none;
+}
+
+@keyframes mismatch-shake {
+  0% { transform: translateX(0); }
+  12% { transform: translateX(-5px); }
+  24% { transform: translateX(5px); }
+  36% { transform: translateX(-4px); }
+  48% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  72% { transform: translateX(3px); }
+  84% { transform: translateX(-2px); }
+  100% { transform: translateX(0); }
+}
+
+.recall-card.mismatch-shake {
+  animation: mismatch-shake 500ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 1;
+}
+
+/* Card faces: default renderer for non-infinite modes keeps using the back face text */
+.recall-card .face-front {
+  opacity: 0;
+}
+
+.recall-card .face-back {
+  opacity: 1;
+}
+
+.mode-infinite .recall-card.active .face-front,
+.mode-infinite .recall-card.matched .face-front {
+  opacity: 1;
+}
+
+.mode-infinite .recall-card.active .face-back,
+.mode-infinite .recall-card.matched .face-back {
+  opacity: 0;
+}
+
+/* Smooth flip when revealing/hiding cards */
+@keyframes card-flip-hide {
+  0% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(0.08);
+    opacity: 0.20;
+  }
+}
+
+@keyframes card-flip-show-a {
+  0% {
+    transform: scaleX(0.08);
+    opacity: 0.20;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes card-flip-show-b {
+  0% {
+    transform: scaleX(0.08);
+    opacity: 0.20;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.recall-card.flip-hide {
+  animation: card-flip-hide 260ms cubic-bezier(0.4, 0, 1, 1) 1;
+}
+
+.recall-card.flip-show,
+.recall-card.flip-show-a {
+  animation: card-flip-show-a 260ms cubic-bezier(0, 0, 0.2, 1) 1;
+}
+
+.recall-card.flip-show-b {
+  animation: card-flip-show-b 260ms cubic-bezier(0, 0, 0.2, 1) 1;
+}
+
+.mode-infinite .recall-card.flip-show .face-front,
+.mode-infinite .recall-card.flip-show-a .face-front,
+.mode-infinite .recall-card.flip-show-b .face-front {
+  animation: card-face-front-show 260ms cubic-bezier(0, 0, 0.2, 1) 1;
+}
+
+.mode-infinite .recall-card.flip-show .face-back,
+.mode-infinite .recall-card.flip-show-a .face-back,
+.mode-infinite .recall-card.flip-show-b .face-back {
+  animation: card-face-back-hide 260ms cubic-bezier(0, 0, 0.2, 1) 1;
+}
+
+.mode-infinite .recall-card.flip-hide .face-front {
+  animation: card-face-front-hide 260ms cubic-bezier(0.4, 0, 1, 1) 1;
+}
+
+.mode-infinite .recall-card.flip-hide .face-back {
+  animation: card-face-back-show 260ms cubic-bezier(0.4, 0, 1, 1) 1;
+}
+
+@keyframes card-face-front-show {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.12);
+  }
+  49% {
+    opacity: 0;
+    transform: scaleX(0.08);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(0.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes card-face-back-hide {
+  0% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  49% {
+    opacity: 1;
+    transform: scaleX(0.08);
+  }
+  50% {
+    opacity: 0;
+    transform: scaleX(0.08);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0.12);
+  }
+}
+
+@keyframes card-face-front-hide {
+  0% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  49% {
+    opacity: 1;
+    transform: scaleX(0.08);
+  }
+  50% {
+    opacity: 0;
+    transform: scaleX(0.08);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0.12);
+  }
+}
+
+@keyframes card-face-back-show {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.12);
+  }
+  49% {
+    opacity: 0;
+    transform: scaleX(0.08);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(0.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* One-pass flip used by Impossible reshuffle punishment to keep all cards synchronized */
+@keyframes reshuffle-flip {
+  0% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  25% {
+    transform: scaleX(0.08);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  75% {
+    transform: scaleX(0.08);
+    opacity: 0.35;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.recall-card.reshuffle-flip {
+  animation: reshuffle-flip 760ms cubic-bezier(0.28, 0.11, 0.32, 1) 1;
+}
+
+.recall-card.reshuffle-flip.hard-reshuffle-fast {
+  animation-duration: 620ms;
+}
+
+.mode-infinite .recall-card.reshuffle-flip .face-front {
+  animation: reshuffle-front 760ms cubic-bezier(0.28, 0.11, 0.32, 1) 1;
+}
+
+.mode-infinite .recall-card.reshuffle-flip .face-back {
+  animation: reshuffle-back 760ms cubic-bezier(0.28, 0.11, 0.32, 1) 1;
+}
+
+@keyframes infinite-round-flip {
+  0% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleX(0.08);
+    opacity: 0.35;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.recall-card.infinite-round-flip {
+  animation: infinite-round-flip 620ms cubic-bezier(0.28, 0.11, 0.32, 1) 1;
+}
+
+.mode-infinite .recall-card.infinite-round-flip .face-front {
+  animation: infinite-round-front 620ms cubic-bezier(0.28, 0.11, 0.32, 1) 1;
+}
+
+.mode-infinite .recall-card.infinite-round-flip .face-back {
+  animation: infinite-round-back 620ms cubic-bezier(0.28, 0.11, 0.32, 1) 1;
+}
+
+@keyframes infinite-round-front {
+  0% {
+    opacity: 0;
+  }
+  49% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes infinite-round-back {
+  0% {
+    opacity: 1;
+  }
+  49% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes reshuffle-front {
+  0% {
+    opacity: 0;
+  }
+  24% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  74% {
+    opacity: 0;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes reshuffle-back {
+  0% {
+    opacity: 1;
+  }
+  24% {
+    opacity: 1;
+  }
+  25% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  74% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes infinite-level-swap-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.04;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes infinite-level-swap-in {
+  0% {
+    opacity: 0.05;
+    transform: scale(1.16);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.recall-card-container.infinite-level-swap-out {
+  animation: infinite-level-swap-out 520ms cubic-bezier(0.3, 0.0, 0.2, 1) 1;
+}
+
+.recall-card-container.infinite-level-swap-in {
+  animation: infinite-level-swap-in 460ms cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+
+/* Organic easing for the final victory cascade */
+.recall-card.victory-cascade.flip-hide {
+  animation: card-flip-hide-victory 360ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+.recall-card.victory-cascade.flip-show,
+.recall-card.victory-cascade.flip-show-a,
+.recall-card.victory-cascade.flip-show-b {
+  animation: card-flip-show-victory 380ms cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+
+@keyframes card-flip-hide-victory {
+  0% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(0.08);
+    opacity: 1;
+  }
+}
+
+@keyframes card-flip-show-victory {
+  0% {
+    transform: scaleX(0.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+/* Brief visual bounce when a match is confirmed */
+@keyframes match-bump {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.10);
+  }
+  65% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.recall-card.match-bump {
+  animation: match-bump 1300ms cubic-bezier(0.22, 0.61, 0.36, 1) 1;
+}

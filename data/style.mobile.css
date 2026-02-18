@@ -1,0 +1,34 @@
+/* Visual adaptations for mobile devices or compact screens */
+
+/* Contenedor del tablero en modo compacto */
+.recall-card-container.compact {
+  padding: 12px;
+  border-radius: 12px;
+}
+
+/* Ajuste del radio de las cartas en modo compacto */
+.recall-card-container.compact .recall-card {
+  border-radius: 8px;
+}
+
+.main-menu-content {
+  min-width: 0;
+  padding: 0;
+}
+
+.main-menu-root .main-menu-button {
+  min-width: 154px;
+  min-height: 38px;
+  border-radius: 22px;
+  margin-bottom: 0;
+}
+
+.memory-dialog-content {
+  min-width: 320px;
+}
+
+.score-mode-switcher button {
+  min-width: 72px;
+  padding-left: 6px;
+  padding-right: 6px;
+}

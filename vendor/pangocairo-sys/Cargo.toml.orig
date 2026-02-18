@@ -1,0 +1,61 @@
+[build-dependencies]
+system-deps = "7"
+
+[dependencies]
+libc = "0.2"
+
+[dependencies.cairo-sys-rs]
+workspace = true
+
+[dependencies.glib-sys]
+workspace = true
+
+[dependencies.pango-sys]
+workspace = true
+
+[dev-dependencies]
+shell-words = "1.0.0"
+tempfile = "3"
+
+[lib]
+name = "pango_cairo_sys"
+
+[package]
+build = "build.rs"
+description = "FFI bindings to PangoCairo"
+keywords = ["gtk", "ffi", "gtk-rs", "gnome"]
+name = "pangocairo-sys"
+
+[package.authors]
+workspace = true
+
+[package.edition]
+workspace = true
+
+[package.exclude]
+workspace = true
+
+[package.homepage]
+workspace = true
+
+[package.license]
+workspace = true
+
+[package.repository]
+workspace = true
+
+[package.rust-version]
+workspace = true
+
+[package.version]
+workspace = true
+
+[package.metadata.system-deps.pangocairo]
+name = "pangocairo"
+version = "1.40"
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--generate-link-to-definition"]
+all-features = true
+
+[features]

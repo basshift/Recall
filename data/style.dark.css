@@ -1,0 +1,84 @@
+/* Color application for the Dark Theme */
+
+/* Contenedor del tablero en modo oscuro */
+.theme-dark .recall-card-container {
+  background-color: rgba(0, 0, 0, 0.20);
+  box-shadow: 0 3px 10px alpha(@dark_card_shadow, 0.65);
+}
+
+/* Window-level flat color */
+window.app-window.theme-dark {
+  background-color: #5a3a12;
+}
+
+/* Keep views transparent so the window color is visible */
+window.app-window.theme-dark .main-menu-root,
+window.app-window.theme-dark .game-root,
+window.app-window.theme-dark .victory-root {
+  background-color: transparent;
+  color: @dark_app_fg;
+}
+
+/* Color del título en el menú principal oscuro */
+.theme-dark .main-menu-title {
+  color: @dark_title_fg;
+}
+
+.theme-dark .memory-intro {
+  color: alpha(@dark_app_fg, 0.76);
+}
+
+.theme-dark .game-title-main,
+.theme-dark .game-title-subtitle {
+  color: @dark_title_fg;
+}
+
+.theme-dark .app-header label,
+.theme-dark .app-header button {
+  color: @dark_title_fg;
+}
+
+.theme-dark .score-list-page {
+  background-color: alpha(@dark_card_bg_inner, 0.9);
+  border: 1px solid alpha(@dark_header_sep, 0.9);
+}
+
+.theme-dark .victory-card {
+  background-color: rgba(0, 0, 0, 0.65);
+  border: 1px solid alpha(@dark_header_sep, 0.92);
+  box-shadow: 0 6px 18px alpha(@dark_card_shadow, 0.88);
+}
+
+.theme-dark .firework-particle.color-0 { color: alpha(@dark_title_fg, 0.90); }
+.theme-dark .firework-particle.color-1 { color: alpha(@dark_title_fg, 0.90); }
+.theme-dark .firework-particle.color-2 { color: alpha(@dark_title_fg, 0.90); }
+.theme-dark .firework-particle.color-3 { color: alpha(@dark_title_fg, 0.90); }
+
+/* Estilo de la carta en modo oscuro */
+.theme-dark .recall-card {
+  background-color: rgba(0, 0, 0, 0.40);
+}
+
+/* Hover de la carta en modo oscuro */
+.theme-dark .recall-card:hover {
+  background-color: rgba(255, 255, 255, 0.40);
+}
+
+/* Estado activo/revelado o emparejado de la carta en modo oscuro */
+.theme-dark .recall-card:active,
+.theme-dark .recall-card.active,
+.theme-dark .recall-card.matched {
+  background-color: rgba(0, 0, 0, 0.65);
+}
+
+/* Disable hover painting during final locked sequence */
+.theme-dark .no-hover .recall-card:hover,
+.theme-dark .no-hover .recall-card:not(.matched):hover,
+.theme-dark .no-hover .recall-card:active {
+  background-color: rgba(0, 0, 0, 0.40);
+}
+
+/* Color del simbolo oculto y textos internos de carta en modo oscuro */
+.theme-dark .recall-card-label {
+  color: @dark_app_fg;
+}
