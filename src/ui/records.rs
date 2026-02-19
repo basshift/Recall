@@ -57,13 +57,11 @@ fn rank_for_precision(level: u8, precision_pct: u8) -> Rank {
 }
 
 fn records_path() -> Option<PathBuf> {
-    let home = std::env::var("HOME").ok()?;
-    Some(PathBuf::from(home).join(".config/recall").join(RECORDS_FILE_NAME))
+    Some(glib::user_config_dir().join("recall").join(RECORDS_FILE_NAME))
 }
 
 fn legacy_records_path() -> Option<PathBuf> {
-    let home = std::env::var("HOME").ok()?;
-    Some(PathBuf::from(home).join(".config/recall").join(LEGACY_RECORDS_FILE_NAME))
+    Some(glib::user_config_dir().join("recall").join(LEGACY_RECORDS_FILE_NAME))
 }
 
 fn parse_mode_record(raw: &str) -> Option<ModeRecord> {

@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use glib;
 
 use super::state::{AppState, Difficulty, Tile, TileStatus};
 
@@ -24,8 +25,7 @@ pub struct SavedRun {
 }
 
 fn save_path() -> Option<PathBuf> {
-    let home = std::env::var("HOME").ok()?;
-    Some(PathBuf::from(home).join(".config/recall").join(SAVE_FILE_NAME))
+    Some(glib::user_config_dir().join("recall").join(SAVE_FILE_NAME))
 }
 
 fn difficulty_to_code(difficulty: Difficulty) -> &'static str {
