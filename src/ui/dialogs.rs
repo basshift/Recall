@@ -22,7 +22,7 @@ Complete the board with the best accuracy and time you can.",
 pub fn show_about_dialog(app: &adw::Application) -> adw::AboutDialog {
     let dialog = adw::AboutDialog::builder()
         .application_name("Recall")
-        .application_icon("io.basshift.recall")
+        .application_icon("io.github.basshift.recall")
         .developer_name("Sebastian Dávila (Basshift)")
         .developers(vec!["Sebastian Dávila (Basshift)"])
         .version("0.1.0")

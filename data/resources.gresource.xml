@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/io/basshift/Recall">
+  <gresource prefix="/io/github/basshift/Recall">
     <file>style.vars.css</file>
     <file>style.css</file>
     <file>style.light.css</file>
@@ -11,10 +11,10 @@
     <file preprocess="xml-stripblanks">victory/rank-b.svg</file>
     <file preprocess="xml-stripblanks">victory/rank-c.svg</file>
   </gresource>
-  <gresource prefix="/io/basshift/Recall/icons/hicolor">
+  <gresource prefix="/io/github/basshift/Recall/icons/hicolor">
     <file>index.theme</file>
-    <file alias="scalable/apps/io.basshift.recall.svg" preprocess="xml-stripblanks">scalable/apps/io.basshift.Recall.svg</file>
-    <file preprocess="xml-stripblanks">scalable/apps/io.basshift.Recall.svg</file>
-    <file preprocess="xml-stripblanks">scalable/apps/io.basshift.Recall.Devel.svg</file>
+    <file alias="scalable/apps/io.github.basshift.recall.svg" preprocess="xml-stripblanks">scalable/apps/io.github.basshift.Recall.svg</file>
+    <file preprocess="xml-stripblanks">scalable/apps/io.github.basshift.Recall.svg</file>
+    <file preprocess="xml-stripblanks">scalable/apps/io.github.basshift.Recall.Devel.svg</file>
   </gresource>
 </gresources>

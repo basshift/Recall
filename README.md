@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="data/icons/hicolor/scalable/apps/io.basshift.Recall.svg" width="92" alt="Recall icon" />
+  <img src="data/icons/hicolor/scalable/apps/io.github.basshift.Recall.svg" width="92" alt="Recall icon" />
   <h1>Recall</h1>
   <p><strong>A calm GNOME memory game made with Rust, GTK4, and libadwaita.</strong></p>
   <p>Classic, Tri, and Infinite modes with polished transitions and local records.</p>
@@ -71,13 +71,13 @@ In game:
 
 Manifests:
 
-- Local build: `io.basshift.Recall.yaml`
-- Flathub submission: `io.basshift.Recall.flathub.yaml`
+- Local build: `io.github.basshift.Recall.yaml`
+- Flathub submission: `io.github.basshift.Recall.flathub.yaml`
 
 Local Flatpak build:
 
 ```bash
-flatpak-builder --force-clean build-flatpak io.basshift.Recall.yaml
+flatpak-builder --force-clean build-flatpak io.github.basshift.Recall.yaml
 ```
 
 ## Project Status

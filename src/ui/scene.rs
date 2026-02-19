@@ -26,10 +26,10 @@ fn rank_from_victory_stats(stats_text: &str) -> Rank {
 
 fn rank_resource_path(rank: Rank) -> &'static str {
     match rank {
-        Rank::S => "/io/basshift/Recall/victory/rank-s.svg",
-        Rank::A => "/io/basshift/Recall/victory/rank-a.svg",
-        Rank::B => "/io/basshift/Recall/victory/rank-b.svg",
-        Rank::C => "/io/basshift/Recall/victory/rank-c.svg",
+        Rank::S => "/io/github/basshift/Recall/victory/rank-s.svg",
+        Rank::A => "/io/github/basshift/Recall/victory/rank-a.svg",
+        Rank::B => "/io/github/basshift/Recall/victory/rank-b.svg",
+        Rank::C => "/io/github/basshift/Recall/victory/rank-c.svg",
     }
 }
 

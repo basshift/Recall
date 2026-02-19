@@ -1,7 +1,7 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
-app_id := "io.basshift.Recall"
-manifest := "io.basshift.Recall.yaml"
+app_id := "io.github.basshift.Recall"
+manifest := "io.github.basshift.Recall.yaml"
 build_dir := "build-flatpak"
 logs_dir := "logs"
 

@@ -845,9 +845,9 @@ fn schedule_win_cascade_and_continue(state: &Rc<RefCell<AppState>>, game_id: u64
 }
 
 pub fn run() {
-    glib::set_prgname(Some("io.basshift.Recall"));
+    glib::set_prgname(Some("io.github.basshift.Recall"));
     let app = adw::Application::builder()
-        .application_id("io.basshift.Recall")
+        .application_id("io.github.basshift.Recall")
         .build();
 
     app.connect_activate(move |app| {
@@ -1024,7 +1024,7 @@ pub fn run() {
         let win = adw::ApplicationWindow::builder()
             .application(app)
             .title("Recall")
-            .icon_name("io.basshift.recall")
+            .icon_name("io.github.basshift.recall")
             .default_width(860)
             .default_height(680)
             .content(&toolbar)
@@ -1125,14 +1125,14 @@ fn load_css() {
     };
 
     let icon_theme = gtk::IconTheme::for_display(&display);
-    icon_theme.add_resource_path("/io/basshift/Recall/icons/hicolor");
+    icon_theme.add_resource_path("/io/github/basshift/Recall/icons/hicolor");
 
     for resource_path in [
-        "/io/basshift/Recall/style.vars.css",
-        "/io/basshift/Recall/style.css",
-        "/io/basshift/Recall/style.light.css",
-        "/io/basshift/Recall/style.dark.css",
-        "/io/basshift/Recall/style.mobile.css",
+        "/io/github/basshift/Recall/style.vars.css",
+        "/io/github/basshift/Recall/style.css",
+        "/io/github/basshift/Recall/style.light.css",
+        "/io/github/basshift/Recall/style.dark.css",
+        "/io/github/basshift/Recall/style.mobile.css",
     ] {
         let provider = gtk::CssProvider::new();
         provider.load_from_resource(resource_path);
@@ -1159,7 +1159,7 @@ fn build_menu_view(state: &Rc<RefCell<AppState>>, app: &adw::Application) -> gtk
     content.set_valign(gtk::Align::Center);
     content.add_css_class("main-menu-content");
 
-    let icon = gtk::Image::from_icon_name("io.basshift.recall");
+    let icon = gtk::Image::from_icon_name("io.github.basshift.recall");
     icon.set_pixel_size(192);
     icon.add_css_class("main-menu-icon");
 
@@ -1378,7 +1378,7 @@ fn build_victory_view(state: &Rc<RefCell<AppState>>) -> gtk::Box {
     content.set_margin_start(28);
     content.set_margin_end(28);
 
-    let rank_art = gtk::Image::from_resource("/io/basshift/Recall/victory/rank-c.svg");
+    let rank_art = gtk::Image::from_resource("/io/github/basshift/Recall/victory/rank-c.svg");
     rank_art.add_css_class("victory-rank-art");
     rank_art.set_pixel_size(160);
     rank_art.set_halign(gtk::Align::Center);

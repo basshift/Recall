@@ -10,9 +10,9 @@ fn main() {
     println!("cargo:rerun-if-changed=data/victory/rank-b.svg");
     println!("cargo:rerun-if-changed=data/victory/rank-c.svg");
     println!("cargo:rerun-if-changed=data/icons/hicolor/index.theme");
-    println!("cargo:rerun-if-changed=data/icons/hicolor/scalable/apps/io.basshift.Recall.svg");
+    println!("cargo:rerun-if-changed=data/icons/hicolor/scalable/apps/io.github.basshift.Recall.svg");
     println!(
-        "cargo:rerun-if-changed=data/icons/hicolor/scalable/apps/io.basshift.Recall.Devel.svg"
+        "cargo:rerun-if-changed=data/icons/hicolor/scalable/apps/io.github.basshift.Recall.Devel.svg"
     );
 
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR not set");
