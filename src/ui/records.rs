@@ -358,27 +358,6 @@ fn serialize_json_records(records: &PlayerRecords) -> String {
     out
 }
 
-fn ensure_seed_records(records: &mut PlayerRecords) {
-    if !records.classic.is_empty() || !records.tri.is_empty() || !records.infinite.is_empty() {
-        return;
-    }
-    records.classic = vec![
-        ModeRecord { level: 2, time_secs: 72, precision_pct: 100, rank: Rank::S, date_label: "2026-02-11 20:31".to_string() },
-        ModeRecord { level: 4, time_secs: 171, precision_pct: 91, rank: Rank::A, date_label: "2026-02-13 22:17".to_string() },
-        ModeRecord { level: 3, time_secs: 114, precision_pct: 87, rank: Rank::B, date_label: "2026-02-14 19:06".to_string() },
-    ];
-    records.tri = vec![
-        ModeRecord { level: 2, time_secs: 129, precision_pct: 95, rank: Rank::A, date_label: "2026-02-12 18:44".to_string() },
-        ModeRecord { level: 3, time_secs: 205, precision_pct: 89, rank: Rank::B, date_label: "2026-02-14 21:52".to_string() },
-        ModeRecord { level: 4, time_secs: 284, precision_pct: 83, rank: Rank::B, date_label: "2026-02-15 00:09".to_string() },
-    ];
-    records.infinite = vec![
-        InfiniteRecord { round: 16, segment_level: 4, segment_survival: 6, time_secs: 780, date_label: "2026-02-13 23:10".to_string() },
-        InfiniteRecord { round: 13, segment_level: 4, segment_survival: 3, time_secs: 598, date_label: "2026-02-14 20:26".to_string() },
-        InfiniteRecord { round: 10, segment_level: 3, segment_survival: 4, time_secs: 470, date_label: "2026-02-12 22:02".to_string() },
-    ];
-}
-
 pub fn load_records() -> PlayerRecords {
     let mut records = PlayerRecords::default();
 
@@ -392,7 +371,6 @@ pub fn load_records() -> PlayerRecords {
         records = load_legacy_records(&raw);
     }
 
-    ensure_seed_records(&mut records);
     save_records(&records);
     records
 }
