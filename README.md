@@ -3,6 +3,11 @@
   <h1>Recall</h1>
   <p><strong>Stay sharp under pressure</strong></p>
   <p>A stylish memory game where calm focus turns into fast pressure.</p>
+  <p>
+    <a href="https://flathub.org/apps/io.github.basshift.Recall">
+      <img src="https://flathub.org/api/badge?locale=en" width="200" alt="Get it on Flathub" />
+    </a>
+  </p>
 </div>
 
 Recall starts simple and readable, then steadily raises the pressure. It is designed as a polished desktop game for GNOME, with clean visuals, responsive board feedback, and three distinct ways to play.
