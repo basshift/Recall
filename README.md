@@ -63,20 +63,6 @@ Run the packaged app:
 just run-flatpak
 ```
 
-## Debug Shortcuts
-
-Enable debug helpers:
-
-```bash
-RECALL_DEBUG=1 cargo run
-```
-
-Available in-game:
-
-- `Ctrl+N` or `Ctrl+F9`: prepare a near-win board
-- `Ctrl+R`: trigger the contextual in-game action
-- `Ctrl+1/2/3/4`: force level by current mode
-
 ## Project Goals
 
 - Build a memory game that feels native on GNOME
