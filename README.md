@@ -2,7 +2,7 @@
   <img src="data/icons/hicolor/scalable/apps/io.github.basshift.Recall.svg" width="92" alt="Recall icon" />
   <h1>Recall</h1>
   <p><strong>Stay sharp under pressure</strong></p>
-  <p>A GNOME memory game built with Rust, GTK4, and libadwaita.</p>
+  <p>A stylish memory game where calm focus turns into fast pressure.</p>
 </div>
 
 Recall starts simple and readable, then steadily raises the pressure. It is designed as a polished desktop game for GNOME, with clean visuals, responsive board feedback, and three distinct ways to play.
