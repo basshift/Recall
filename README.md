@@ -1,47 +1,38 @@
 <div align="center">
   <img src="data/icons/hicolor/scalable/apps/io.github.basshift.Recall.svg" width="92" alt="Recall icon" />
   <h1>Recall</h1>
-  <p><strong>A memory game built with Rust, GTK4, and libadwaita that starts calm and grows into a sharp challenge.</strong></p>
-  <p>Classic, Trio, and Infinite modes with polished transitions, local records, and escalating pressure at higher levels.</p>
+  <p><strong>Stay sharp under pressure</strong></p>
+  <p>A GNOME memory game built with Rust, GTK4, and libadwaita.</p>
 </div>
+
+Recall starts simple and readable, then steadily raises the pressure. It is designed as a polished desktop game for GNOME, with clean visuals, responsive board feedback, and three distinct ways to play.
 
 ## Preview
 
-Classic mode gameplay:
+![Recall trio gameplay](data/screenshots/recall-trio-gameplay.png)
 
-![Recall classic gameplay](data/screenshots/recall-classic-gameplay.png)
-
-Demo video:
+Video:
 
 - https://youtu.be/j905L9dmyVI
 
-## Project Goals
+## What Makes Recall Different
 
-- Create a clean GNOME-native game experience
-- Keep gameplay readable and responsive across difficulty levels
-- Maintain a codebase that is easy to extend and maintain
+- Three modes with different pacing: `Classic`, `Trio`, and `Infinite`
+- Difficulty that ramps from approachable to demanding
+- GNOME-native interface with GTK4 and libadwaita
+- Local records and continue-run support
+- Animated transitions, victory flow, and in-app how-to guidance
+- Light and dark themes
 
-## Game Modes
+## Modes
 
-- `Classic`: pair matching with progressive difficulty (`Easy`, `Medium`, `Hard`, `Expert`)
-- `Trio`: group matching variant with level-based progression
-- `Infinite`: continuous rounds with escalating pressure
+- `Classic`: match pairs across four difficulty levels
+- `Trio`: build groups of three with its own progression curve
+- `Infinite`: survive increasingly intense rounds for as long as possible
 
-## Core Features
+## Build From Source
 
-- Local score/history tracking
-- Animated board transitions and victory flow
-- Theme support (light and dark variants)
-- Debug shortcuts for rapid gameplay testing
-
-## Tech Stack
-
-- Rust
-- GTK4
-- libadwaita
-- Cairo / Pango
-
-## Run Locally
+Run locally:
 
 ```bash
 cargo run
@@ -53,38 +44,59 @@ Release build:
 cargo build --release
 ```
 
-## Debug Mode (Optional)
+## Flatpak
 
-Enable debug shortcuts:
+This repository includes both manifests used for packaging:
+
+- Local development build: `io.github.basshift.Recall.yaml`
+- Flathub distribution manifest: `io.github.basshift.Recall.flathub.yaml`
+
+Local Flatpak build:
+
+```bash
+just build-flatpak-clean
+```
+
+Run the packaged app:
+
+```bash
+just run-flatpak
+```
+
+## Debug Shortcuts
+
+Enable debug helpers:
 
 ```bash
 RECALL_DEBUG=1 cargo run
 ```
 
-In game:
+Available in-game:
 
 - `Ctrl+N` or `Ctrl+F9`: prepare a near-win board
-- `Ctrl+R`: trigger the contextual in-game action (restart in Classic/Trio, end run in Infinite)
-- `Ctrl+1/2/3/4`: force level by mode context
+- `Ctrl+R`: trigger the contextual in-game action
+- `Ctrl+1/2/3/4`: force level by current mode
 
-## Flatpak
+## Project Goals
 
-Manifests:
+- Build a memory game that feels native on GNOME
+- Keep the experience readable at low pressure and exciting at high pressure
+- Maintain a codebase that is practical to review, extend, and ship
 
-- Local build: `io.github.basshift.Recall.yaml`
-- Flathub submission: `io.github.basshift.Recall.flathub.yaml`
+## Contributing
 
-Local Flatpak build:
+Bug reports, usability feedback, and code contributions are welcome.
 
-```bash
-flatpak-builder --force-clean build-flatpak io.github.basshift.Recall.yaml
-```
+If you want to contribute:
 
-## Project Status
+- open an issue for bugs, regressions, or feature ideas
+- fork the repository and send a pull request
+- keep changes focused and easy to validate
 
-- Target release: `v1.0.0`
-- Flathub packaging manifest is maintained in this repository
+## Credits
 
-## Author
+Developed by Sebastian Davila (Basshift)
 
-Sebastian Davila (Basshift)
+## License
+
+Recall is released under the MIT License. See [LICENSE](LICENSE).
