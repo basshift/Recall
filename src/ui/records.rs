@@ -8,6 +8,8 @@ use gtk4::prelude::*;
 use libadwaita as adw;
 use adw::prelude::*;
 
+use crate::i18n::tr;
+
 use super::infinite;
 use super::state::{AppState, Difficulty, InfiniteRecord, ModeRecord, PlayerRecords, Rank};
 
@@ -25,7 +27,7 @@ fn format_mm_ss(total_secs: u32) -> String {
 fn classic_level_name(level: u8) -> &'static str {
     match level.clamp(1, 4) {
         1 => "Easy",
-        2 => "Normal",
+        2 => "Medium",
         3 => "Hard",
         _ => "Expert",
     }
@@ -180,25 +182,21 @@ fn parse_json_entry_line(raw: &str) -> Option<String> {
     Some(json_unescape(&line[1..line.len() - 1]))
 }
 
-fn table_cell(text: &str, class_name: &str, width_chars: i32) -> gtk::Label {
+fn time_suffix_label(text: &str) -> gtk::Label {
     let label = gtk::Label::new(Some(text));
-    label.add_css_class(class_name);
-    label.add_css_class("body");
-    label.set_halign(gtk::Align::Fill);
-    label.set_hexpand(true);
-    label.set_xalign(0.5);
-    if width_chars > 0 {
-        label.set_width_chars(width_chars);
-    }
+    label.add_css_class("score-row-time");
+    label.add_css_class("numeric");
+    label.set_halign(gtk::Align::End);
+    label.set_valign(gtk::Align::Center);
     label
 }
 
-fn section_title(text: &str) -> gtk::Label {
+fn rank_suffix_label(text: &str) -> gtk::Label {
     let label = gtk::Label::new(Some(text));
-    label.add_css_class("score-section-title");
-    label.add_css_class("heading");
-    label.set_halign(gtk::Align::Center);
-    label.set_xalign(0.5);
+    label.add_css_class("score-row-rank");
+    label.add_css_class("caption");
+    label.set_halign(gtk::Align::End);
+    label.set_valign(gtk::Align::Center);
     label
 }
 
@@ -208,7 +206,7 @@ fn now_date_label() -> String {
     {
         return text.to_string();
     }
-    "Unknown date".to_string()
+    tr("Unknown date")
 }
 
 fn load_legacy_records(raw: &str) -> PlayerRecords {
@@ -218,9 +216,13 @@ fn load_legacy_records(raw: &str) -> PlayerRecords {
             if let Some(entry) = parse_mode_record(rest) {
                 records.classic.push(entry);
             }
+        } else if let Some(rest) = line.strip_prefix("trio_entry=") {
+            if let Some(entry) = parse_mode_record(rest) {
+                records.trio.push(entry);
+            }
         } else if let Some(rest) = line.strip_prefix("tri_entry=") {
             if let Some(entry) = parse_mode_record(rest) {
-                records.tri.push(entry);
+                records.trio.push(entry);
             }
         } else if let Some(rest) = line.strip_prefix("infinite_entry=") {
             if let Some(entry) = parse_infinite_record(rest) {
@@ -232,7 +234,7 @@ fn load_legacy_records(raw: &str) -> PlayerRecords {
             }
         } else if let Some(rest) = line.strip_prefix("tri=") {
             if let Some(entry) = parse_legacy_mode_best(rest) {
-                records.tri.push(entry);
+                records.trio.push(entry);
             }
         } else if let Some(rest) = line.strip_prefix("infinite=")
             && let Some(entry) = parse_legacy_infinite_best(rest)
@@ -243,62 +245,87 @@ fn load_legacy_records(raw: &str) -> PlayerRecords {
     records
 }
 
-fn load_json_records(raw: &str) -> PlayerRecords {
+fn load_json_records(raw: &str) -> Option<PlayerRecords> {
     #[derive(Clone, Copy)]
     enum Section {
         Classic,
-        Tri,
+        Trio,
         Infinite,
     }
 
     let mut section: Option<Section> = None;
     let mut records = PlayerRecords::default();
+    let mut saw_section = false;
 
     for line in raw.lines() {
         let trimmed = line.trim();
-        if trimmed.starts_with("\"classic\"") {
-            section = Some(Section::Classic);
+        if trimmed.is_empty() || trimmed == "{" || trimmed == "}" {
             continue;
         }
-        if trimmed.starts_with("\"tri\"") {
-            section = Some(Section::Tri);
+        if trimmed.starts_with("\"classic\"") {
+            saw_section = true;
+            section = if trimmed.ends_with("[]") || trimmed.ends_with("[],") {
+                None
+            } else {
+                Some(Section::Classic)
+            };
+            continue;
+        }
+        if trimmed.starts_with("\"trio\"") || trimmed.starts_with("\"tri\"") {
+            saw_section = true;
+            section = if trimmed.ends_with("[]") || trimmed.ends_with("[],") {
+                None
+            } else {
+                Some(Section::Trio)
+            };
             continue;
         }
         if trimmed.starts_with("\"infinite\"") {
-            section = Some(Section::Infinite);
+            saw_section = true;
+            section = if trimmed.ends_with("[]") || trimmed.ends_with("[],") {
+                None
+            } else {
+                Some(Section::Infinite)
+            };
             continue;
         }
-        if trimmed.starts_with(']') {
+        if trimmed == "]" || trimmed == "]," {
             section = None;
             continue;
         }
 
-        let Some(active_section) = section else {
-            continue;
-        };
-        let Some(entry_line) = parse_json_entry_line(trimmed) else {
-            continue;
-        };
+        let active_section = section?;
+        let entry_line = parse_json_entry_line(trimmed)?;
         match active_section {
             Section::Classic => {
                 if let Some(entry) = parse_mode_record(&entry_line) {
                     records.classic.push(entry);
+                } else {
+                    return None;
                 }
             }
-            Section::Tri => {
+            Section::Trio => {
                 if let Some(entry) = parse_mode_record(&entry_line) {
-                    records.tri.push(entry);
+                    records.trio.push(entry);
+                } else {
+                    return None;
                 }
             }
             Section::Infinite => {
                 if let Some(entry) = parse_infinite_record(&entry_line) {
                     records.infinite.push(entry);
+                } else {
+                    return None;
                 }
             }
         }
     }
 
-    records
+    if section.is_some() || !saw_section {
+        return None;
+    }
+
+    Some(records)
 }
 
 fn serialize_legacy_records(records: &PlayerRecords) -> String {
@@ -308,8 +335,8 @@ fn serialize_legacy_records(records: &PlayerRecords) -> String {
         out.push_str(&encode_mode_record(entry));
         out.push('\n');
     }
-    for entry in &records.tri {
-        out.push_str("tri_entry=");
+    for entry in &records.trio {
+        out.push_str("trio_entry=");
         out.push_str(&encode_mode_record(entry));
         out.push('\n');
     }
@@ -334,9 +361,9 @@ fn serialize_json_records(records: &PlayerRecords) -> String {
         out.push('\n');
     }
     out.push_str("  ],\n");
-    out.push_str("  \"tri\": [\n");
-    for (idx, entry) in records.tri.iter().enumerate() {
-        let suffix = if idx + 1 == records.tri.len() { "" } else { "," };
+    out.push_str("  \"trio\": [\n");
+    for (idx, entry) in records.trio.iter().enumerate() {
+        let suffix = if idx + 1 == records.trio.len() { "" } else { "," };
         out.push_str("    \"");
         out.push_str(&json_escape(&encode_mode_record(entry)));
         out.push('"');
@@ -364,7 +391,13 @@ pub fn load_records() -> PlayerRecords {
     if let Some(path) = records_path()
         && let Ok(raw) = fs::read_to_string(path)
     {
-        records = load_json_records(&raw);
+        if let Some(parsed) = load_json_records(&raw) {
+            records = parsed;
+        } else if let Some(legacy_path) = legacy_records_path()
+            && let Ok(legacy_raw) = fs::read_to_string(legacy_path)
+        {
+            records = load_legacy_records(&legacy_raw);
+        }
     } else if let Some(path) = legacy_records_path()
         && let Ok(raw) = fs::read_to_string(path)
     {
@@ -415,116 +448,80 @@ fn recent_infinite_records(records: &[InfiniteRecord], limit: usize) -> Vec<Infi
     records.iter().rev().take(limit).cloned().collect()
 }
 
-fn build_mode_grid(entries: &[ModeRecord], target_rows: usize) -> gtk::Grid {
-    let grid = gtk::Grid::new();
-    grid.set_halign(gtk::Align::Fill);
-    grid.set_hexpand(true);
-    grid.set_column_homogeneous(true);
-    grid.set_column_spacing(10);
-    grid.set_row_spacing(5);
-    grid.attach(&table_cell("Level", "score-table-head", 7), 0, 0, 1, 1);
-    grid.attach(&table_cell("Time", "score-table-head", 6), 1, 0, 1, 1);
-    grid.attach(&table_cell("Harmony", "score-table-head", 7), 2, 0, 1, 1);
-
-    for idx in 0..target_rows {
-        let row = (idx + 1) as i32;
-        let (level_text, time_text, rank_text) = if let Some(entry) = entries.get(idx) {
-            (
-                classic_level_name(entry.level).to_string(),
-                format_mm_ss(entry.time_secs),
-                entry.rank.as_str().to_string(),
-            )
-        } else {
-            ("---".to_string(), "---".to_string(), "---".to_string())
-        };
-        grid.attach(
-            &table_cell(&level_text, "score-table-row", 7),
-            0,
-            row,
-            1,
-            1,
-        );
-        grid.attach(
-            &table_cell(&time_text, "score-table-row", 6),
-            1,
-            row,
-            1,
-            1,
-        );
-        grid.attach(
-            &table_cell(&rank_text, "score-table-row", 7),
-            2,
-            row,
-            1,
-            1,
-        );
-    }
-
-    grid
+fn build_empty_records_status() -> adw::StatusPage {
+    adw::StatusPage::builder()
+        .title(tr("No scores yet"))
+        .description(tr("Finish a run to populate this section"))
+        .icon_name("view-list-symbolic")
+        .build()
 }
 
-fn build_infinite_grid(entries: &[InfiniteRecord], target_rows: usize) -> gtk::Grid {
-    let grid = gtk::Grid::new();
-    grid.set_halign(gtk::Align::Fill);
-    grid.set_hexpand(true);
-    grid.set_column_homogeneous(true);
-    grid.set_column_spacing(10);
-    grid.set_row_spacing(5);
-    grid.attach(&table_cell("Round", "score-table-head", 6), 0, 0, 1, 1);
-    grid.attach(&table_cell("Milestone", "score-table-head", 10), 1, 0, 1, 1);
-    grid.attach(&table_cell("Time", "score-table-head", 6), 2, 0, 1, 1);
+fn build_mode_group(title: &str, entries: &[ModeRecord]) -> adw::PreferencesGroup {
+    let group = adw::PreferencesGroup::new();
+    group.set_title(title);
 
-    for idx in 0..target_rows {
-        let row = (idx + 1) as i32;
-        let (round_text, milestone_text, time_text) = if let Some(entry) = entries.get(idx) {
-            (
-                entry.round.to_string(),
-                format!(
-                    "{} x{}",
-                    infinite::level_name(entry.segment_level),
-                    entry.segment_survival
-                ),
-                format_mm_ss(entry.time_secs),
-            )
-        } else {
-            ("---".to_string(), "---".to_string(), "---".to_string())
-        };
-        grid.attach(
-            &table_cell(&round_text, "score-table-row", 6),
-            0,
-            row,
-            1,
-            1,
-        );
-        grid.attach(
-            &table_cell(&milestone_text, "score-table-row", 10),
-            1,
-            row,
-            1,
-            1,
-        );
-        grid.attach(
-            &table_cell(&time_text, "score-table-row", 6),
-            2,
-            row,
-            1,
-            1,
-        );
+    for entry in entries {
+        let row = adw::ActionRow::builder()
+            .title(tr(classic_level_name(entry.level)))
+            .subtitle(format!("{} {}%", tr("Precision"), entry.precision_pct))
+            .build();
+        row.set_activatable(false);
+        row.add_suffix(&time_suffix_label(&format_mm_ss(entry.time_secs)));
+        row.add_suffix(&rank_suffix_label(entry.rank.as_str()));
+        group.add(&row);
     }
 
-    grid
+    group
 }
 
-fn build_precision_tab(mode_title: &str, icon: &str, records: &[ModeRecord]) -> gtk::Box {
-    let tab = gtk::Box::new(gtk::Orientation::Vertical, 8);
-    tab.set_hexpand(true);
-    tab.set_halign(gtk::Align::Fill);
-    let _ = (mode_title, icon);
+fn build_infinite_group(title: &str, entries: &[InfiniteRecord]) -> adw::PreferencesGroup {
+    let group = adw::PreferencesGroup::new();
+    group.set_title(title);
 
-    let list = gtk::Box::new(gtk::Orientation::Vertical, 4);
-    list.add_css_class("score-list-page");
-    list.set_hexpand(true);
-    list.set_halign(gtk::Align::Fill);
+    for entry in entries {
+        let milestone = format!(
+            "{} x{}",
+            tr(infinite::level_name(entry.segment_level)),
+            entry.segment_survival
+        );
+        let row = adw::ActionRow::builder()
+            .title(format!("{} {}", tr("Round"), entry.round))
+            .subtitle(format!("{} {}", tr("Milestone"), milestone))
+            .build();
+        row.set_activatable(false);
+        row.add_suffix(&time_suffix_label(&format_mm_ss(entry.time_secs)));
+        group.add(&row);
+    }
+
+    group
+}
+
+fn build_records_page_shell() -> gtk::Box {
+    let page = gtk::Box::new(gtk::Orientation::Vertical, 18);
+    page.add_css_class("score-list-page");
+    page.set_hexpand(true);
+    page.set_vexpand(true);
+    page.set_halign(gtk::Align::Fill);
+    page.set_valign(gtk::Align::Fill);
+    page
+}
+
+fn wrap_records_page(content: &impl IsA<gtk::Widget>) -> gtk::ScrolledWindow {
+    let clamp = adw::Clamp::new();
+    clamp.set_maximum_size(560);
+    clamp.set_tightening_threshold(360);
+    clamp.set_child(Some(content));
+
+    let scroller = gtk::ScrolledWindow::new();
+    scroller.set_hscrollbar_policy(gtk::PolicyType::Never);
+    scroller.set_min_content_height(280);
+    scroller.set_vexpand(true);
+    scroller.set_child(Some(&clamp));
+    scroller
+}
+
+fn build_precision_tab(records: &[ModeRecord]) -> gtk::ScrolledWindow {
+    let page = build_records_page_shell();
     let top_entries = {
         let mut rows = records.to_vec();
         sort_mode_records(&mut rows);
@@ -533,31 +530,49 @@ fn build_precision_tab(mode_title: &str, icon: &str, records: &[ModeRecord]) -> 
     };
     let recent_entries = recent_mode_records(records, 10);
 
-    list.append(&section_title("TOP 3"));
-    list.append(&build_mode_grid(&top_entries, 3));
-    list.append(&section_title("LATEST 10"));
-    list.append(&build_mode_grid(&recent_entries, 10));
-    tab.append(&list);
-    tab
+    if top_entries.is_empty() && recent_entries.is_empty() {
+        page.append(&build_empty_records_status());
+    } else {
+        if !top_entries.is_empty() {
+            page.append(&build_mode_group(
+                &tr("Best runs"),
+                &top_entries,
+            ));
+        }
+        if !recent_entries.is_empty() {
+            page.append(&build_mode_group(
+                &tr("Recent runs"),
+                &recent_entries,
+            ));
+        }
+    }
+
+    wrap_records_page(&page)
 }
 
-fn build_infinite_tab(records: &[InfiniteRecord]) -> gtk::Box {
-    let tab = gtk::Box::new(gtk::Orientation::Vertical, 8);
-    tab.set_hexpand(true);
-    tab.set_halign(gtk::Align::Fill);
-
-    let list = gtk::Box::new(gtk::Orientation::Vertical, 4);
-    list.add_css_class("score-list-page");
-    list.set_hexpand(true);
-    list.set_halign(gtk::Align::Fill);
+fn build_infinite_tab(records: &[InfiniteRecord]) -> gtk::ScrolledWindow {
+    let page = build_records_page_shell();
     let top_entries = top_infinite_records(records, 3);
     let recent_entries = recent_infinite_records(records, 10);
-    list.append(&section_title("TOP 3"));
-    list.append(&build_infinite_grid(&top_entries, 3));
-    list.append(&section_title("LATEST 10"));
-    list.append(&build_infinite_grid(&recent_entries, 10));
-    tab.append(&list);
-    tab
+
+    if top_entries.is_empty() && recent_entries.is_empty() {
+        page.append(&build_empty_records_status());
+    } else {
+        if !top_entries.is_empty() {
+            page.append(&build_infinite_group(
+                &tr("Best runs"),
+                &top_entries,
+            ));
+        }
+        if !recent_entries.is_empty() {
+            page.append(&build_infinite_group(
+                &tr("Recent runs"),
+                &recent_entries,
+            ));
+        }
+    }
+
+    wrap_records_page(&page)
 }
 
 pub fn register_non_infinite_result(st: &mut AppState) {
@@ -567,8 +582,8 @@ pub fn register_non_infinite_result(st: &mut AppState) {
     } else {
         ((st.run_matches as f64 / attempts as f64) * 100.0).round() as u8
     };
-    let level = if st.difficulty == Difficulty::Tri {
-        st.tri_level
+    let level = if st.difficulty == Difficulty::Trio {
+        st.trio_level
     } else {
         match st.difficulty {
             Difficulty::Easy => 1,
@@ -586,11 +601,11 @@ pub fn register_non_infinite_result(st: &mut AppState) {
         rank,
         date_label: now_date_label(),
     };
-    if st.difficulty == Difficulty::Tri {
-        st.records.tri.push(best_candidate);
-        let overflow = st.records.tri.len().saturating_sub(MODE_HISTORY_LIMIT);
+    if st.difficulty == Difficulty::Trio {
+        st.records.trio.push(best_candidate);
+        let overflow = st.records.trio.len().saturating_sub(MODE_HISTORY_LIMIT);
         if overflow > 0 {
-            st.records.tri.drain(0..overflow);
+            st.records.trio.drain(0..overflow);
         }
     } else {
         st.records.classic.push(best_candidate);
@@ -602,25 +617,30 @@ pub fn register_non_infinite_result(st: &mut AppState) {
     save_records(&st.records);
 
     st.victory_title_text = match rank {
-        Rank::S => "Flawless Memory!".to_string(),
-        Rank::A => "Sharp Mind!".to_string(),
-        Rank::B => "Keep the Momentum!".to_string(),
-        Rank::C => "Growing Strong!".to_string(),
+        Rank::S => tr("Flawless Memory!"),
+        Rank::A => tr("Sharp Mind!"),
+        Rank::B => tr("Keep the Momentum!"),
+        Rank::C => tr("Growing Strong!"),
     };
-    st.victory_message_text = if st.difficulty == Difficulty::Tri {
-        format!("Tri {} completed", classic_level_name(level))
+    st.victory_message_text = if st.difficulty == Difficulty::Trio {
+        format!("{} {} {}", tr("Trio"), tr(classic_level_name(level)), tr("completed"))
     } else {
-        format!("Classic {} completed", classic_level_name(level))
+        format!("{} {} {}", tr("Classic"), tr(classic_level_name(level)), tr("completed"))
     };
     st.victory_stats_text = format!(
-        "Time: {}\nPrecision: {}%\nHarmony: {}",
+        "{}: {}\n{}: {}%\n{}: {}",
+        tr("Time"),
         format_mm_ss(st.seconds_elapsed),
+        tr("Precision"),
         precision_pct,
+        tr("Harmony"),
         rank.as_str()
     );
+    st.victory_rank = rank;
+    st.victory_art_resource = None;
 }
 
-pub fn register_infinite_round_result(st: &mut AppState) {
+pub fn register_infinite_run_result(st: &mut AppState) {
     let round = st.infinite_round;
     let segment = infinite::classic_difficulty_for_round(round);
     let segment_level = match segment {
@@ -652,69 +672,26 @@ pub fn register_infinite_round_result(st: &mut AppState) {
     save_records(&st.records);
 }
 
+pub fn reset_local_records(state: &Rc<RefCell<AppState>>) {
+    let mut st = state.borrow_mut();
+    st.records = PlayerRecords::default();
+    save_records(&st.records);
+}
+
 pub fn show_memory_dialog(state: &Rc<RefCell<AppState>>, app: &adw::Application) -> adw::Dialog {
     let parent_window = app.active_window();
     let dialog = adw::Dialog::new();
     dialog.set_can_close(true);
+    dialog.set_content_width(520);
+    dialog.set_content_height(420);
 
-    let title = gtk::Label::new(Some("LOCAL SCORE"));
+    let title = gtk::Label::new(Some(&tr("Local Score")));
     title.add_css_class("game-title-main");
     title.set_halign(gtk::Align::Center);
 
     let header = adw::HeaderBar::new();
     header.set_title_widget(Some(&title));
     header.set_show_end_title_buttons(true);
-
-    let share_button = gtk::MenuButton::builder()
-        .icon_name("send-to-symbolic")
-        .tooltip_text("Records options")
-        .build();
-    share_button.add_css_class("flat");
-
-    let share_menu = gtk::Box::new(gtk::Orientation::Vertical, 4);
-    share_menu.set_margin_top(6);
-    share_menu.set_margin_bottom(6);
-    share_menu.set_margin_start(6);
-    share_menu.set_margin_end(6);
-
-    let export_button = gtk::Button::with_label("Export records");
-    export_button.set_halign(gtk::Align::Start);
-    export_button.add_css_class("flat");
-
-    let import_button = gtk::Button::with_label("Import records");
-    import_button.set_halign(gtk::Align::Start);
-    import_button.add_css_class("flat");
-
-    {
-        let dialog = dialog.clone();
-        export_button.connect_clicked(move |_| {
-            let alert = adw::AlertDialog::builder()
-                .heading("Export records")
-                .body("Export will be enabled in the next iteration.")
-                .build();
-            alert.add_response("ok", "OK");
-            alert.present(Some(&dialog));
-        });
-    }
-
-    {
-        let dialog = dialog.clone();
-        import_button.connect_clicked(move |_| {
-            let alert = adw::AlertDialog::builder()
-                .heading("Import records")
-                .body("Import will be enabled in the next iteration.")
-                .build();
-            alert.add_response("ok", "OK");
-            alert.present(Some(&dialog));
-        });
-    }
-
-    share_menu.append(&export_button);
-    share_menu.append(&import_button);
-    let share_popover = gtk::Popover::new();
-    share_popover.set_child(Some(&share_menu));
-    share_button.set_popover(Some(&share_popover));
-    header.pack_start(&share_button);
 
     let content = gtk::Box::new(gtk::Orientation::Vertical, 8);
     content.set_margin_top(10);
@@ -723,12 +700,13 @@ pub fn show_memory_dialog(state: &Rc<RefCell<AppState>>, app: &adw::Application)
     content.set_margin_end(10);
     content.add_css_class("memory-dialog-content");
     content.set_halign(gtk::Align::Fill);
+    content.set_vexpand(true);
 
-    let (classic_records, tri_records, infinite_records) = {
+    let (classic_records, trio_records, infinite_records) = {
         let st = state.borrow();
         (
             st.records.classic.clone(),
-            st.records.tri.clone(),
+            st.records.trio.clone(),
             st.records.infinite.clone(),
         )
     };
@@ -739,16 +717,17 @@ pub fn show_memory_dialog(state: &Rc<RefCell<AppState>>, app: &adw::Application)
     let mode_stack = gtk::Stack::new();
     mode_stack.set_halign(gtk::Align::Fill);
     mode_stack.set_hexpand(true);
+    mode_stack.set_vexpand(true);
     mode_stack.set_transition_type(gtk::StackTransitionType::SlideLeftRight);
     mode_stack.set_transition_duration(180);
     mode_switcher.set_stack(Some(&mode_stack));
 
-    let classic_tab = build_precision_tab("Classic", "◯", &classic_records);
-    mode_stack.add_titled(&classic_tab, Some("score-classic"), "Classic");
-    let tri_tab = build_precision_tab("Tri", "△", &tri_records);
-    mode_stack.add_titled(&tri_tab, Some("score-tri"), "Tri");
+    let classic_tab = build_precision_tab(&classic_records);
+    mode_stack.add_titled(&classic_tab, Some("score-classic"), &tr("Classic"));
+    let trio_tab = build_precision_tab(&trio_records);
+    mode_stack.add_titled(&trio_tab, Some("score-trio"), &tr("Trio"));
     let infinite_tab = build_infinite_tab(&infinite_records);
-    mode_stack.add_titled(&infinite_tab, Some("score-infinite"), "Infinite");
+    mode_stack.add_titled(&infinite_tab, Some("score-infinite"), &tr("Infinite"));
 
     content.append(&mode_switcher);
     content.append(&mode_stack);
@@ -760,4 +739,80 @@ pub fn show_memory_dialog(state: &Rc<RefCell<AppState>>, app: &adw::Application)
     dialog.set_child(Some(&toolbar));
     dialog.present(parent_window.as_ref());
     dialog
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mode_record(level: u8, time_secs: u32, precision_pct: u8, rank: Rank, date: &str) -> ModeRecord {
+        ModeRecord {
+            level,
+            time_secs,
+            precision_pct,
+            rank,
+            date_label: date.to_string(),
+        }
+    }
+
+    fn infinite_record(round: u32, segment_level: u8, segment_survival: u32, time_secs: u32, date: &str) -> InfiniteRecord {
+        InfiniteRecord {
+            round,
+            segment_level,
+            segment_survival,
+            time_secs,
+            date_label: date.to_string(),
+        }
+    }
+
+    #[test]
+    fn json_roundtrip_preserves_records_content() {
+        let records = PlayerRecords {
+            classic: vec![mode_record(2, 70, 92, Rank::A, "2026-03-01 10:00")],
+            trio: vec![mode_record(4, 130, 87, Rank::B, "2026-03-01 10:05")],
+            infinite: vec![infinite_record(11, 4, 1, 220, "2026-03-01 10:10")],
+        };
+
+        let raw = serialize_json_records(&records);
+        let parsed = load_json_records(&raw).expect("serialized records should parse");
+
+        assert_eq!(parsed.classic.len(), 1);
+        assert_eq!(parsed.trio.len(), 1);
+        assert_eq!(parsed.infinite.len(), 1);
+
+        let classic = &parsed.classic[0];
+        assert_eq!(classic.level, 2);
+        assert_eq!(classic.time_secs, 70);
+        assert_eq!(classic.precision_pct, 92);
+        assert!(classic.rank == Rank::A);
+        assert_eq!(classic.date_label, "2026-03-01 10:00");
+
+        let trio = &parsed.trio[0];
+        assert_eq!(trio.level, 4);
+        assert_eq!(trio.time_secs, 130);
+        assert_eq!(trio.precision_pct, 87);
+        assert!(trio.rank == Rank::B);
+
+        let infinite = &parsed.infinite[0];
+        assert_eq!(infinite.round, 11);
+        assert_eq!(infinite.segment_level, 4);
+        assert_eq!(infinite.segment_survival, 1);
+        assert_eq!(infinite.time_secs, 220);
+    }
+
+    #[test]
+    fn legacy_loader_accepts_trio_key() {
+        let raw = "\
+tri=3|A|95|90
+classic=1|B|110|80
+infinite=7|3|1|300
+";
+        let parsed = load_legacy_records(raw);
+        assert_eq!(parsed.trio.len(), 1);
+        assert_eq!(parsed.classic.len(), 1);
+        assert_eq!(parsed.infinite.len(), 1);
+        assert_eq!(parsed.trio[0].level, 3);
+        assert!(parsed.trio[0].rank == Rank::A);
+    }
+
 }

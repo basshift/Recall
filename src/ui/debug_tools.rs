@@ -6,7 +6,7 @@ use gtk4::prelude::*;
 use super::state::{AppState, Difficulty, TileStatus};
 use super::hud::update_subtitle;
 use super::scene::rebuild_board;
-use super::app::{apply_difficulty_change, apply_tri_level_change, show_game};
+use super::app::{apply_difficulty_change, apply_trio_level_change, show_game};
 use super::hud::stop_preview;
 use super::hud::stop_timer;
 use super::app::clear_flip_classes;
@@ -34,6 +34,10 @@ pub fn handle_debug_shortcut(
     key: gdk::Key,
     mods: gdk::ModifierType,
 ) -> bool {
+    if !debug_mode_enabled() {
+        return false;
+    }
+
     let want_ctrl = mods.contains(gdk::ModifierType::CONTROL_MASK);
     if !want_ctrl {
         return false;
@@ -57,11 +61,6 @@ pub fn handle_debug_shortcut(
     );
     if !is_debug_key {
         return false;
-    }
-
-    if !debug_mode_enabled() {
-        show_debug_banner(state, "DEBUG OFF | export RECALL_DEBUG=1");
-        return true;
     }
 
     match key {
@@ -117,7 +116,7 @@ pub fn handle_debug_shortcut(
                     } else {
                         eprintln!(
                             "[DEBUG][Infinite] Forced next round -> round {} (level {})",
-                            st.infinite_round, st.recall_level
+                            st.infinite_round, st.infinite_level
                         );
                     }
                 }
@@ -154,8 +153,8 @@ pub fn handle_debug_shortcut(
 fn debug_force_level(state: &Rc<RefCell<AppState>>, level: u8) -> bool {
     let mut st = state.borrow_mut();
     if infinite::is_infinite(st.difficulty) {
-        st.set_recall_level(level.clamp(1, 4));
-        let level_name = infinite::level_name(st.recall_level).to_string();
+        st.set_infinite_level(level.clamp(1, 4));
+        let level_name = infinite::level_name(st.infinite_level).to_string();
         eprintln!(
             "[DEBUG][Infinite] Forced level -> {} (round {})",
             level_name,
@@ -168,15 +167,15 @@ fn debug_force_level(state: &Rc<RefCell<AppState>>, level: u8) -> bool {
         return true;
     }
 
-    if st.difficulty == Difficulty::Tri {
-        let tri_level = level.clamp(1, 4);
+    if st.difficulty == Difficulty::Trio {
+        let trio_level = level.clamp(1, 4);
         drop(st);
-        apply_tri_level_change(state, tri_level);
+        apply_trio_level_change(state, trio_level);
         eprintln!(
-            "[DEBUG][Tri] Forced level -> {}",
-            tri_level
+            "[DEBUG][Trio] Forced level -> {}",
+            trio_level
         );
-        show_debug_banner(state, &format!("DEBUG | Tri level {}", tri_level));
+        show_debug_banner(state, &format!("DEBUG | Trio level {}", trio_level));
         return true;
     }
 
@@ -237,10 +236,12 @@ fn debug_prepare_near_win(state: &Rc<RefCell<AppState>>) -> NearWinResult {
             button.remove_css_class("active");
             button.remove_css_class("mismatch-shake");
             button.remove_css_class("match-bump");
+            button.remove_css_class("matched-dim");
             if keep_hidden {
                 button.remove_css_class("matched");
             } else {
                 button.add_css_class("matched");
+                button.add_css_class("matched-dim");
             }
             redraw_button_child(button);
         }

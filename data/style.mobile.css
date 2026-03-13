@@ -6,10 +6,7 @@
   border-radius: 12px;
 }
 
-/* Ajuste del radio de las cartas en modo compacto */
-.recall-card-container.compact .recall-card {
-  border-radius: 8px;
-}
+/* Keep card radius dynamic in compact mode (set from runtime CSS). */
 
 .main-menu-content {
   min-width: 0;
@@ -21,6 +18,18 @@
   min-height: 38px;
   border-radius: 22px;
   margin-bottom: 0;
+}
+
+.main-menu-root .main-menu-button-primary {
+  border-radius: 22px;
+}
+
+.main-menu-subtitle {
+}
+
+.main-menu-icon {
+  min-width: 160px;
+  min-height: 160px;
 }
 
 .memory-dialog-content {

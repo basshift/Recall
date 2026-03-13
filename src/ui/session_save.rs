@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::PathBuf;
-use glib;
 
 use super::state::{AppState, Difficulty, Tile, TileStatus};
 
@@ -10,8 +9,8 @@ const SAVE_VERSION: u8 = 1;
 #[derive(Clone)]
 pub struct SavedRun {
     pub difficulty: Difficulty,
-    pub tri_level: u8,
-    pub recall_level: u8,
+    pub trio_level: u8,
+    pub infinite_level: u8,
     pub infinite_round: u32,
     pub seconds_elapsed: u32,
     pub run_mismatches: u32,
@@ -34,8 +33,8 @@ fn difficulty_to_code(difficulty: Difficulty) -> &'static str {
         Difficulty::Medium => "medium",
         Difficulty::Hard => "hard",
         Difficulty::Impossible => "impossible",
-        Difficulty::Tri => "tri",
-        Difficulty::RecallMode => "recall",
+        Difficulty::Trio => "trio",
+        Difficulty::Infinite => "infinite",
     }
 }
 
@@ -45,8 +44,8 @@ fn difficulty_from_code(code: &str) -> Option<Difficulty> {
         "medium" => Some(Difficulty::Medium),
         "hard" => Some(Difficulty::Hard),
         "impossible" => Some(Difficulty::Impossible),
-        "tri" => Some(Difficulty::Tri),
-        "recall" => Some(Difficulty::RecallMode),
+        "trio" | "tri" => Some(Difficulty::Trio),
+        "infinite" | "recall" => Some(Difficulty::Infinite),
         _ => None,
     }
 }
@@ -141,8 +140,8 @@ fn serialize_saved_run(run: &SavedRun) -> String {
     out.push_str(&format!("version={}\n", SAVE_VERSION));
     out.push_str("started=1\n");
     out.push_str(&format!("difficulty={}\n", difficulty_to_code(run.difficulty)));
-    out.push_str(&format!("tri_level={}\n", run.tri_level));
-    out.push_str(&format!("recall_level={}\n", run.recall_level));
+    out.push_str(&format!("trio_level={}\n", run.trio_level));
+    out.push_str(&format!("infinite_level={}\n", run.infinite_level));
     out.push_str(&format!("infinite_round={}\n", run.infinite_round));
     out.push_str(&format!("seconds_elapsed={}\n", run.seconds_elapsed));
     out.push_str(&format!("run_mismatches={}\n", run.run_mismatches));
@@ -184,8 +183,8 @@ fn parse_saved_run(raw: &str) -> Option<SavedRun> {
     let mut version = None;
     let mut started = false;
     let mut difficulty = None;
-    let mut tri_level = 3u8;
-    let mut recall_level = 2u8;
+    let mut trio_level = 3u8;
+    let mut infinite_level = 2u8;
     let mut infinite_round = 1u32;
     let mut seconds_elapsed = 0u32;
     let mut run_mismatches = 0u32;
@@ -210,12 +209,20 @@ fn parse_saved_run(raw: &str) -> Option<SavedRun> {
             difficulty = difficulty_from_code(rest.trim());
             continue;
         }
+        if let Some(rest) = line.strip_prefix("trio_level=") {
+            trio_level = rest.parse::<u8>().ok()?.clamp(1, 4);
+            continue;
+        }
         if let Some(rest) = line.strip_prefix("tri_level=") {
-            tri_level = rest.parse::<u8>().ok()?.clamp(1, 4);
+            trio_level = rest.parse::<u8>().ok()?.clamp(1, 4);
+            continue;
+        }
+        if let Some(rest) = line.strip_prefix("infinite_level=") {
+            infinite_level = rest.parse::<u8>().ok()?.clamp(1, 4);
             continue;
         }
         if let Some(rest) = line.strip_prefix("recall_level=") {
-            recall_level = rest.parse::<u8>().ok()?.clamp(1, 4);
+            infinite_level = rest.parse::<u8>().ok()?.clamp(1, 4);
             continue;
         }
         if let Some(rest) = line.strip_prefix("infinite_round=") {
@@ -277,10 +284,10 @@ fn parse_saved_run(raw: &str) -> Option<SavedRun> {
         return None;
     }
 
-    Some(SavedRun {
+    let run = SavedRun {
         difficulty: difficulty?,
-        tri_level,
-        recall_level,
+        trio_level,
+        infinite_level,
         infinite_round,
         seconds_elapsed,
         run_mismatches,
@@ -291,7 +298,46 @@ fn parse_saved_run(raw: &str) -> Option<SavedRun> {
         impossible_same_first_streak,
         flipped_indices,
         tiles,
-    })
+    };
+
+    validate_saved_run(run)
+}
+
+fn expected_saved_run_tile_count(run: &SavedRun) -> usize {
+    let (cols, rows, _) = match run.difficulty {
+        Difficulty::Trio => match run.trio_level.clamp(1, 4) {
+            1 => (4, 6, 3),
+            2 => (5, 6, 3),
+            3 => (6, 7, 3),
+            _ => (6, 8, 3),
+        },
+        Difficulty::Infinite => match run.infinite_level.clamp(1, 4) {
+            1 => (3, 4, 2),
+            2 => (4, 6, 2),
+            3 => (6, 7, 2),
+            _ => (6, 8, 2),
+        },
+        _ => run.difficulty.config(),
+    };
+    (cols * rows) as usize
+}
+
+fn validate_saved_run(run: SavedRun) -> Option<SavedRun> {
+    let expected_tiles = expected_saved_run_tile_count(&run);
+    if run.tiles.len() != expected_tiles || expected_tiles == 0 {
+        return None;
+    }
+    if run
+        .impossible_last_first_index
+        .is_some_and(|index| index >= run.tiles.len())
+    {
+        return None;
+    }
+    if run.flipped_indices.iter().any(|index| *index >= run.tiles.len()) {
+        return None;
+    }
+
+    Some(run)
 }
 
 fn write_atomic(path: &PathBuf, data: &str) {
@@ -310,10 +356,6 @@ pub fn load_saved_run() -> Option<SavedRun> {
     parse_saved_run(&raw)
 }
 
-pub fn has_saved_run() -> bool {
-    load_saved_run().is_some()
-}
-
 pub fn clear_saved_run() {
     if let Some(path) = save_path() {
         let _ = fs::remove_file(path);
@@ -325,10 +367,24 @@ pub fn save_current_run(st: &AppState) {
         return;
     }
 
+    // Never persist transient visual states (Flipped). If a run is saved mid-animation,
+    // resume from a stable board where only matched tiles stay revealed.
+    let normalized_tiles = st
+        .tiles
+        .iter()
+        .cloned()
+        .map(|mut tile| {
+            if tile.status == TileStatus::Flipped {
+                tile.status = TileStatus::Hidden;
+            }
+            tile
+        })
+        .collect::<Vec<Tile>>();
+
     let run = SavedRun {
         difficulty: st.difficulty,
-        tri_level: st.tri_level,
-        recall_level: st.recall_level,
+        trio_level: st.trio_level,
+        infinite_level: st.infinite_level,
         infinite_round: st.infinite_round,
         seconds_elapsed: st.seconds_elapsed,
         run_mismatches: st.run_mismatches,
@@ -337,11 +393,221 @@ pub fn save_current_run(st: &AppState) {
         impossible_punish_stage: st.impossible_punish_stage,
         impossible_last_first_index: st.impossible_last_first_index,
         impossible_same_first_streak: st.impossible_same_first_streak,
-        flipped_indices: st.flipped_indices.clone(),
-        tiles: st.tiles.clone(),
+        flipped_indices: Vec::new(),
+        tiles: normalized_tiles,
     };
 
     if let Some(path) = save_path() {
         write_atomic(&path, &serialize_saved_run(&run));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn repeated_tile_lines(count: usize) -> String {
+        (0..count)
+            .map(|idx| format!("tile=H|tile-{idx}\n"))
+            .collect()
+    }
+
+    fn sample_saved_run() -> SavedRun {
+        SavedRun {
+            difficulty: Difficulty::Easy,
+            trio_level: 4,
+            infinite_level: 3,
+            infinite_round: 1,
+            seconds_elapsed: 97,
+            run_mismatches: 8,
+            run_matches: 14,
+            impossible_mismatch_count: 2,
+            impossible_punish_stage: 3,
+            impossible_last_first_index: Some(5),
+            impossible_same_first_streak: 1,
+            flipped_indices: vec![1, 4, 7],
+            tiles: vec![
+                Tile {
+                    status: TileStatus::Hidden,
+                    value: "plain".to_string(),
+                },
+                Tile {
+                    status: TileStatus::Flipped,
+                    value: "pipe|slash\\newline\nok".to_string(),
+                },
+                Tile {
+                    status: TileStatus::Matched,
+                    value: "ascii-token".to_string(),
+                },
+                Tile {
+                    status: TileStatus::Hidden,
+                    value: "tile-3".to_string(),
+                },
+                Tile {
+                    status: TileStatus::Flipped,
+                    value: "tile-4".to_string(),
+                },
+                Tile {
+                    status: TileStatus::Matched,
+                    value: "tile-5".to_string(),
+                },
+                Tile {
+                    status: TileStatus::Hidden,
+                    value: "tile-6".to_string(),
+                },
+                Tile {
+                    status: TileStatus::Flipped,
+                    value: "tile-7".to_string(),
+                },
+                Tile {
+                    status: TileStatus::Matched,
+                    value: "tile-8".to_string(),
+                },
+                Tile {
+                    status: TileStatus::Hidden,
+                    value: "tile-9".to_string(),
+                },
+                Tile {
+                    status: TileStatus::Flipped,
+                    value: "tile-10".to_string(),
+                },
+                Tile {
+                    status: TileStatus::Matched,
+                    value: "tile-11".to_string(),
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn parse_saved_run_accepts_legacy_trio_code() {
+        let raw = format!("\
+version=1
+started=1
+difficulty=tri
+trio_level=2
+infinite_level=1
+infinite_round=1
+seconds_elapsed=10
+run_mismatches=1
+run_matches=2
+impossible_mismatch_count=0
+impossible_punish_stage=0
+impossible_last_first_index=-
+impossible_same_first_streak=0
+flipped_indices=
+{}",
+            repeated_tile_lines(30)
+        );
+        let parsed = parse_saved_run(&raw).expect("expected legacy tri run to parse");
+        assert!(parsed.difficulty == Difficulty::Trio);
+        assert_eq!(parsed.trio_level, 2);
+    }
+
+    #[test]
+    fn parse_saved_run_accepts_legacy_infinite_keys() {
+        let raw = format!("\
+version=1
+started=1
+difficulty=recall
+tri_level=3
+recall_level=4
+infinite_round=9
+seconds_elapsed=22
+run_mismatches=1
+run_matches=2
+impossible_mismatch_count=0
+impossible_punish_stage=0
+impossible_last_first_index=-
+impossible_same_first_streak=0
+flipped_indices=
+{}",
+            repeated_tile_lines(48)
+        );
+        let parsed = parse_saved_run(&raw).expect("expected legacy recall run to parse");
+        assert!(parsed.difficulty == Difficulty::Infinite);
+        assert_eq!(parsed.trio_level, 3);
+        assert_eq!(parsed.infinite_level, 4);
+    }
+
+    #[test]
+    fn saved_run_roundtrip_preserves_payload() {
+        let source = sample_saved_run();
+        let raw = serialize_saved_run(&source);
+        let parsed = parse_saved_run(&raw).expect("expected serialized run to parse");
+
+        assert!(parsed.difficulty == source.difficulty);
+        assert_eq!(parsed.trio_level, source.trio_level);
+        assert_eq!(parsed.infinite_level, source.infinite_level);
+        assert_eq!(parsed.infinite_round, source.infinite_round);
+        assert_eq!(parsed.seconds_elapsed, source.seconds_elapsed);
+        assert_eq!(parsed.run_mismatches, source.run_mismatches);
+        assert_eq!(parsed.run_matches, source.run_matches);
+        assert_eq!(parsed.impossible_mismatch_count, source.impossible_mismatch_count);
+        assert_eq!(parsed.impossible_punish_stage, source.impossible_punish_stage);
+        assert_eq!(parsed.impossible_last_first_index, source.impossible_last_first_index);
+        assert_eq!(parsed.impossible_same_first_streak, source.impossible_same_first_streak);
+        assert_eq!(parsed.flipped_indices, source.flipped_indices);
+        assert_eq!(parsed.tiles.len(), source.tiles.len());
+
+        for (left, right) in parsed.tiles.iter().zip(source.tiles.iter()) {
+            assert!(left.status == right.status);
+            assert_eq!(left.value, right.value);
+        }
+    }
+
+    #[test]
+    fn parse_saved_run_rejects_tile_count_mismatch() {
+        let raw = "\
+version=1
+started=1
+difficulty=easy
+trio_level=1
+infinite_level=1
+infinite_round=1
+seconds_elapsed=10
+run_mismatches=0
+run_matches=0
+impossible_mismatch_count=0
+impossible_punish_stage=0
+impossible_last_first_index=-
+impossible_same_first_streak=0
+flipped_indices=
+tile=H|a
+";
+        assert!(parse_saved_run(raw).is_none());
+    }
+
+    #[test]
+    fn parse_saved_run_rejects_out_of_bounds_indexes() {
+        let raw = "\
+version=1
+started=1
+difficulty=easy
+trio_level=1
+infinite_level=1
+infinite_round=1
+seconds_elapsed=10
+run_mismatches=0
+run_matches=0
+impossible_mismatch_count=0
+impossible_punish_stage=0
+impossible_last_first_index=50
+impossible_same_first_streak=0
+flipped_indices=
+tile=H|a
+tile=H|b
+tile=H|c
+tile=H|d
+tile=H|e
+tile=H|f
+tile=H|g
+tile=H|h
+tile=H|i
+tile=H|j
+tile=H|k
+tile=H|l
+";
+        assert!(parse_saved_run(raw).is_none());
     }
 }

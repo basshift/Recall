@@ -23,7 +23,8 @@ modules:
       - install -Dm644 data/io.github.basshift.Recall.desktop /app/share/applications/io.github.basshift.Recall.desktop
       - install -Dm644 data/io.github.basshift.Recall.metainfo.xml /app/share/metainfo/io.github.basshift.Recall.metainfo.xml
       - install -Dm644 data/icons/hicolor/scalable/apps/io.github.basshift.Recall.svg /app/share/icons/hicolor/scalable/apps/io.github.basshift.Recall.svg
+      - install -Dm644 LICENSE /app/share/licenses/io.github.basshift.Recall/LICENSE
     sources:
       - type: git
         url: https://github.com/basshift/Recall.git
-        commit: edb214fce1077edc75caad1afb75d1c3890008a3
+        commit: b672ea7154d918a6ef66c967199d8f5b68d99326

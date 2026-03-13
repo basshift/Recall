@@ -1,13 +1,13 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use gtk4 as gtk;
-use gtk4::prelude::*;
-use gtk4::pango;
-use super::state::{AppState, TileStatus};
-use super::app::handle_tile_click;
 
-pub const CONTENT_MARGIN: i32 = 12;
-pub const TILE_GAP: i32 = 6;
+use gtk4 as gtk;
+use gtk4::pango;
+use gtk4::prelude::*;
+
+use super::app::handle_tile_click;
+use super::state::{AppState, TileStatus};
+
 const CARD_RADIUS_FACTOR: f64 = 0.12;
 const CONTAINER_RADIUS_FACTOR: f64 = 0.20;
 const CARD_RADIUS_MIN: i32 = 4;
@@ -19,11 +19,11 @@ const CONTAINER_PADDING_FACTOR: f64 = 0.20;
 const CONTAINER_PADDING_MIN: i32 = 6;
 const CONTAINER_PADDING_MAX: i32 = 24;
 
-pub fn build_board_grid(state: &Rc<RefCell<AppState>>) -> gtk::Grid {
+pub fn build_trio_grid(state: &Rc<RefCell<AppState>>) -> gtk::Grid {
     let grid = gtk::Grid::new();
     grid.add_css_class("recall-board");
-    grid.set_row_spacing(TILE_GAP as u32);
-    grid.set_column_spacing(TILE_GAP as u32);
+    grid.set_row_spacing(super::board::TILE_GAP as u32);
+    grid.set_column_spacing(super::board::TILE_GAP as u32);
     grid.set_halign(gtk::Align::Fill);
     grid.set_valign(gtk::Align::Fill);
     grid.set_hexpand(true);
@@ -47,16 +47,14 @@ pub fn build_board_grid(state: &Rc<RefCell<AppState>>) -> gtk::Grid {
             if width > 0 && height > 0 {
                 let grid_cells = grid_cols.max(grid_rows).max(1);
                 let approx_cell = width.min(height) / grid_cells;
-                let tile_gap =
-                    ((approx_cell as f64 * 0.10).round() as i32).clamp(TILE_GAP_MIN, TILE_GAP);
+                let tile_gap = ((approx_cell as f64 * 0.10).round() as i32)
+                    .clamp(TILE_GAP_MIN, super::board::TILE_GAP);
                 grid.set_row_spacing(tile_gap as u32);
                 grid.set_column_spacing(tile_gap as u32);
 
                 let cell_width = (width - (grid_cols - 1) * tile_gap) / grid_cols;
                 let cell_height = (height - (grid_rows - 1) * tile_gap) / grid_rows;
                 let min_dim = cell_width.min(cell_height);
-                
-                // Dynamic radii based on available cell size.
                 let card_radius = ((min_dim as f64 * CARD_RADIUS_FACTOR).round() as i32)
                     .clamp(CARD_RADIUS_MIN, CARD_RADIUS_MAX);
                 let container_radius =
@@ -109,7 +107,7 @@ pub fn build_board_grid(state: &Rc<RefCell<AppState>>) -> gtk::Grid {
             .build();
         button.set_hexpand(true);
         button.set_vexpand(true);
-        
+
         let drawing_area = gtk::DrawingArea::builder()
             .hexpand(true)
             .vexpand(true)
@@ -123,8 +121,9 @@ pub fn build_board_grid(state: &Rc<RefCell<AppState>>) -> gtk::Grid {
                 return;
             }
             let tile = &st.tiles[index];
+
             let is_hidden = tile.status == TileStatus::Hidden;
-            let text = if !is_hidden { &tile.value } else { "?" };
+            let text = if is_hidden { "?" } else { &tile.value };
 
             let min_dim = width.min(height) as f64;
             let font_size = if is_hidden {
@@ -132,10 +131,10 @@ pub fn build_board_grid(state: &Rc<RefCell<AppState>>) -> gtk::Grid {
             } else {
                 min_dim * 0.40
             };
-
             cr.set_antialias(gtk::cairo::Antialias::Default);
 
             let layout = pangocairo::functions::create_layout(cr);
+
             let mut font_desc = pango::FontDescription::new();
             if is_hidden {
                 font_desc.set_family("Cantarell, Noto Sans, sans");

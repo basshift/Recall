@@ -8,20 +8,23 @@ use super::board::build_board_grid;
 use super::hud::{set_header_menu, set_header_victory, stop_preview, stop_timer};
 use super::session_save;
 use super::state::{AppState, Difficulty, Rank};
-use super::tri::build_tri_grid;
-use super::app::{start_victory_sparks, stop_victory_sparks};
+use super::trio::build_trio_grid;
+use super::app::{
+    refresh_board_shell_ratio,
+    refresh_continue_button_state,
+    start_victory_sparks,
+    stop_victory_sparks,
+};
 
-fn rank_from_victory_stats(stats_text: &str) -> Rank {
+fn rank_from_victory_stats(stats_text: &str) -> Option<Rank> {
     for line in stats_text.lines() {
-        let normalized = line.trim();
-        if let Some(value) = normalized.strip_prefix("Harmony:") {
-            return Rank::from_str(value.trim()).unwrap_or(Rank::C);
-        }
-        if let Some(value) = normalized.strip_prefix("Rank:") {
-            return Rank::from_str(value.trim()).unwrap_or(Rank::C);
+        if let Some((_, value)) = line.split_once(':')
+            && let Some(rank) = Rank::from_str(value.trim())
+        {
+            return Some(rank);
         }
     }
-    Rank::C
+    None
 }
 
 fn rank_resource_path(rank: Rank) -> &'static str {
@@ -40,8 +43,8 @@ pub(super) fn build_board_for_difficulty(state: &Rc<RefCell<AppState>>) -> gtk::
         | Difficulty::Medium
         | Difficulty::Hard
         | Difficulty::Impossible
-        | Difficulty::RecallMode => build_board_grid(state),
-        Difficulty::Tri => build_tri_grid(state),
+        | Difficulty::Infinite => build_board_grid(state),
+        Difficulty::Trio => build_trio_grid(state),
     }
 }
 
@@ -70,6 +73,7 @@ pub(super) fn rebuild_board(state: &Rc<RefCell<AppState>>) {
     grid_frame.set_vexpand(true);
     grid_frame.set_child(Some(&grid));
     board_container.append(&grid_frame);
+    refresh_board_shell_ratio(state);
 }
 
 pub(super) fn show_victory(state: &Rc<RefCell<AppState>>) {
@@ -84,12 +88,16 @@ pub(super) fn show_victory(state: &Rc<RefCell<AppState>>) {
         if let Some(label) = &st.victory_stats_label {
             label.set_text(&st.victory_stats_text);
         }
-        let rank = rank_from_victory_stats(&st.victory_stats_text);
-        let is_s_rank = rank == Rank::S;
+        let rank = rank_from_victory_stats(&st.victory_stats_text).unwrap_or(st.victory_rank);
         if let Some(image) = &st.victory_rank_art {
-            image.set_resource(Some(rank_resource_path(rank)));
+            if let Some(custom_resource) = &st.victory_art_resource {
+                image.set_resource(Some(custom_resource));
+            } else {
+                image.set_resource(Some(rank_resource_path(rank)));
+            }
+            image.set_visible(true);
         }
-        is_s_rank
+        rank == Rank::S
     };
     set_header_victory(state);
     if is_s_rank {
@@ -111,14 +119,14 @@ pub(super) fn show_menu(state: &Rc<RefCell<AppState>>) {
         if st.active_session_started {
             session_save::save_current_run(&st);
         }
+        // Invalidate pending async callbacks from in-game transitions.
+        st.game_id = st.game_id.wrapping_add(1);
+        st.lock_input = false;
+        st.flipped_indices.clear();
         stop_timer(&mut st);
         stop_preview(&mut st);
         stop_victory_sparks(&mut st);
-        if let Some(button) = &st.continue_button {
-            let has_saved = session_save::has_saved_run();
-            button.set_visible(has_saved);
-            button.set_sensitive(has_saved);
-        }
+        refresh_continue_button_state(&st);
     }
     set_header_menu(state);
     let st = state.borrow();

@@ -1,0 +1,380 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Recall 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-28 23:39-0500\n"
+"PO-Revision-Date: 2026-03-01 00:00+0000\n"
+"Last-Translator: Sebas <you@example.com>\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/ui/app.rs:45 src/ui/app.rs:1353 src/ui/dialogs.rs:348
+msgid "Preferences"
+msgstr "Preferencias"
+
+#: src/ui/app.rs:52 src/ui/dialogs.rs:341
+msgid "General"
+msgstr "General"
+
+#: src/ui/app.rs:55
+msgid "Appearance"
+msgstr "Apariencia"
+
+#: src/ui/app.rs:58
+msgid "Theme"
+msgstr "Tema"
+
+#: src/ui/app.rs:59
+msgid "Select app color scheme"
+msgstr "Selecciona el esquema de color de la app"
+
+#: src/ui/app.rs:61
+msgid "System"
+msgstr "Sistema"
+
+#: src/ui/app.rs:61
+msgid "Light"
+msgstr "Claro"
+
+#: src/ui/app.rs:61
+msgid "Dark"
+msgstr "Oscuro"
+
+#: src/ui/app.rs:83
+msgid "Reduce motion"
+msgstr "Reducir movimiento"
+
+#: src/ui/app.rs:84
+msgid "Turn off interface animations"
+msgstr "Desactiva las animaciones de la interfaz"
+
+#: src/ui/app.rs:99
+msgid "Data"
+msgstr "Datos"
+
+#: src/ui/app.rs:101 src/ui/app.rs:117
+msgid "Reset local records"
+msgstr "Reiniciar récords locales"
+
+#: src/ui/app.rs:102
+msgid "Clear all saved scores on this device"
+msgstr "Borra todos los puntajes guardados en este dispositivo"
+
+#: src/ui/app.rs:105 src/ui/app.rs:121
+msgid "Reset"
+msgstr "Reiniciar"
+
+#: src/ui/app.rs:118
+msgid "This will permanently remove all saved scores on this device"
+msgstr ""
+"Esto eliminará permanentemente todos los puntajes guardados en este "
+"dispositivo"
+
+#: src/ui/app.rs:120 src/ui/app.rs:2237
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: src/ui/app.rs:131
+msgid "Records reset"
+msgstr "Récords reiniciados"
+
+#: src/ui/app.rs:132
+msgid "Local scores were cleared successfully"
+msgstr "Los puntajes locales se borraron correctamente"
+
+#: src/ui/app.rs:134
+msgid "OK"
+msgstr "Aceptar"
+
+#: src/ui/app.rs:599
+msgid "Continue"
+msgstr "Continuar"
+
+msgid "You chose the finish"
+msgstr "Elegiste terminar"
+
+msgid "Infinite on your terms"
+msgstr "Infinite a tu manera"
+
+msgid "End run?"
+msgstr "¿Terminar partida?"
+
+msgid "Your current Infinite score will be saved and this run will end"
+msgstr "Tu puntuación actual de Infinite se guardará y esta partida terminará"
+
+msgid "End run"
+msgstr "Terminar partida"
+
+msgid "Home"
+msgstr "Inicio"
+
+msgid "Restart game"
+msgstr "Reiniciar partida"
+
+msgid "Restart game or end run"
+msgstr "Reiniciar partida o terminar partida"
+
+#: src/ui/app.rs:1333
+msgid "Back"
+msgstr "Atrás"
+
+#: src/ui/app.rs:1352
+msgid "Score"
+msgstr "Puntuación"
+
+#: src/ui/app.rs:1354
+msgid "Keyboard Shortcuts"
+msgstr "Atajos de teclado"
+
+#: src/ui/app.rs:1355 src/ui/dialogs.rs:18
+msgid "How to Play"
+msgstr "Cómo jugar"
+
+#: src/ui/app.rs:1356
+msgid "About Recall"
+msgstr "Acerca de Recall"
+
+#: src/ui/app.rs:1365 src/ui/app.rs:1638
+msgid "New Game"
+msgstr "Nuevo juego"
+
+#: src/ui/app.rs:1601
+msgid "Recall"
+msgstr "Recall"
+
+#: src/ui/app.rs:1605
+msgid "Calm memory rounds with a sharp arcade pulse"
+msgstr "Rondas de memoria calmadas con un pulso arcade intenso"
+
+#: src/ui/app.rs:1842
+msgid "Well done!"
+msgstr "¡Bien hecho!"
+
+#: src/ui/app.rs:1864
+msgid "Play Again"
+msgstr "Jugar de nuevo"
+
+#: src/ui/app.rs:1866
+msgid "Main Menu"
+msgstr "Menú principal"
+
+#: src/ui/app.rs:2234
+msgid "Restart game?"
+msgstr "¿Reiniciar partida?"
+
+#: src/ui/app.rs:2235
+msgid "Your current progress will be lost and a new game will start."
+msgstr "Tu progreso actual se perderá y comenzará una nueva partida."
+
+#: src/ui/app.rs:2238
+msgid "Restart"
+msgstr "Reiniciar"
+
+#: src/ui/dialogs.rs:19
+msgid "Read, Then Recall"
+msgstr "Observa y luego recuerda"
+
+#: src/ui/dialogs.rs:21
+msgid ""
+"Brief reveal first. Keep mental anchors, then match from memory"
+msgstr "Primero un reveal breve. Crea anclas mentales y luego empareja de memoria"
+
+#: src/ui/dialogs.rs:23
+msgid "Match the Full Board"
+msgstr "Completa todo el tablero"
+
+#: src/ui/dialogs.rs:25
+msgid ""
+"Clear every card to win. Build a steady rhythm and protect your accuracy"
+msgstr "Limpia todas las cartas para ganar. Mantén un ritmo estable y cuida tu precisión"
+
+#: src/ui/dialogs.rs:27
+msgid "Know the Modes"
+msgstr "Conoce los modos"
+
+#: src/ui/dialogs.rs:29
+msgid ""
+"Classic matches pairs, Trio matches three, and Infinite escalates "
+"pace every round"
+msgstr ""
+"Classic empareja pares, Trio empareja tres e Infinite acelera el "
+"ritmo en cada ronda"
+
+#: src/ui/dialogs.rs:31
+msgid "Challenge Scale"
+msgstr "Escala del reto"
+
+#: src/ui/dialogs.rs:33
+msgid "Pick your level: bigger boards, less time to memorize"
+msgstr "Elige tu nivel: tableros más grandes y menos tiempo para memorizar"
+
+#: src/ui/dialogs.rs:35
+msgid "Restless Board"
+msgstr "Tablero inquieto"
+
+#: src/ui/dialogs.rs:37
+msgid "Stumble several times and hidden cards may reshuffle"
+msgstr "Si tropiezas varias veces, las cartas ocultas pueden barajarse"
+
+#: src/ui/dialogs.rs:39
+msgid "Previous"
+msgstr "Anterior"
+
+#: src/ui/dialogs.rs:40
+msgid "Next"
+msgstr "Siguiente"
+
+#: src/ui/dialogs.rs:324
+msgid "A memory game for finding pairs."
+msgstr "Un juego de memoria para encontrar parejas."
+
+#: src/ui/dialogs.rs:340
+msgid "Game"
+msgstr "Juego"
+
+#: src/ui/dialogs.rs:342
+msgid "Move between cards"
+msgstr "Mover entre cartas"
+
+#: src/ui/dialogs.rs:343
+msgid "Flip selected card"
+msgstr "Voltear carta seleccionada"
+
+#: src/ui/dialogs.rs:344
+msgid "Restart level"
+msgstr "Reiniciar nivel"
+
+#: src/ui/dialogs.rs:345
+msgid "Back to menu"
+msgstr "Volver al menú"
+
+#: src/ui/dialogs.rs:346
+msgid "Show shortcuts"
+msgstr "Mostrar atajos"
+
+#: src/ui/dialogs.rs:347
+msgid "How to play"
+msgstr "Cómo jugar"
+
+#: src/ui/dialogs.rs:349
+msgid "Back to main menu"
+msgstr "Volver al menú principal"
+
+#: src/ui/dialogs.rs:350
+msgid "Quit"
+msgstr "Salir"
+
+msgid "Victory"
+msgstr "Victoria"
+
+msgid "Choose Mode"
+msgstr "Elegir modo"
+
+msgid "Classic Difficulty"
+msgstr "Dificultad Classic"
+
+msgid "Trio Difficulty"
+msgstr "Dificultad Trio"
+
+msgid "Classic"
+msgstr "Clásico"
+
+msgid "Trio"
+msgstr "Trío"
+
+msgid "Infinite"
+msgstr "Infinito"
+
+msgid "Easy"
+msgstr "Fácil"
+
+msgid "Medium"
+msgstr "Medio"
+
+msgid "Hard"
+msgstr "Difícil"
+
+msgid "Expert"
+msgstr "Experto"
+
+msgid "Match identical cards and clear the full board"
+msgstr "Encuentra cartas idénticas y limpia todo el tablero"
+
+msgid "Form 3-card groups and clear each stage"
+msgstr "Forma grupos de 3 cartas y limpia cada etapa"
+
+msgid "Classic core rules with endless progression"
+msgstr "Reglas base de Classic con progresión infinita"
+
+msgid "Compact 3x4 grid with learning-friendly flow"
+msgstr "Cuadrícula compacta 3x4 con ritmo ideal para aprender"
+
+msgid "Balanced 4x6 grid with a steady rhythm"
+msgstr "Cuadrícula equilibrada 4x6 con ritmo constante"
+
+msgid "Expanded 6x7 grid for quicker decisions"
+msgstr "Cuadrícula expandida 6x7 para decisiones más rápidas"
+
+msgid "Full 6x8 grid with intense focus demands"
+msgstr "Cuadrícula completa 6x8 con alta exigencia de enfoque"
+
+msgid "Compact 4x6 grid with combo-friendly flow"
+msgstr "Cuadrícula compacta 4x6 con ritmo ideal para combos"
+
+msgid "Balanced 5x6 grid with steady combo rhythm"
+msgstr "Cuadrícula equilibrada 5x6 con ritmo de combos estable"
+
+msgid "Expanded 6x7 grid for faster combo reads"
+msgstr "Cuadrícula expandida 6x7 para leer combos más rápido"
+
+msgid "Full 6x8 grid with intense combo pressure"
+msgstr "Cuadrícula completa 6x8 con presión intensa de combos"
+
+msgid "Infinite Round"
+msgstr "Ronda infinita"
+
+msgid "Round"
+msgstr "Ronda"
+
+msgid "Hard Survival"
+msgstr "Supervivencia difícil"
+
+msgid "Expert Survival"
+msgstr "Supervivencia experta"
+
+msgid "Local Score"
+msgstr "Puntuación local"
+
+msgid "Level"
+msgstr "Nivel"
+
+msgid "Time"
+msgstr "Tiempo"
+
+msgid "Harmony"
+msgstr "Armonía"
+
+msgid "Milestone"
+msgstr "Hito"
+
+msgid "Precision"
+msgstr "Precisión"
+
+msgid "Flawless Memory!"
+msgstr "¡Memoria impecable!"
+
+msgid "Sharp Mind!"
+msgstr "¡Mente afilada!"
+
+msgid "Keep the Momentum!"
+msgstr "¡Mantén el impulso!"
+
+msgid "Growing Strong!"
+msgstr "¡Sigues mejorando!"
+
+msgid "completed"
+msgstr "completado"

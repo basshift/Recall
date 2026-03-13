@@ -1,10 +1,14 @@
 use super::state::{AppState, Difficulty};
 
 pub const MISMATCH_THRESHOLD: u8 = 3;
-pub const PREVIEW_SECONDS: f64 = 1.4;
+pub const PREVIEW_SECONDS: f64 = 11.0;
 const MEDIUM_MISMATCH_THRESHOLD: u8 = 5;
 const HARD_MISMATCH_THRESHOLD: u8 = 2;
-const HARD_RESHUFFLE_REVEAL_MS: u64 = 950;
+const MEDIUM_RESHUFFLE_REVEAL_MS: u64 = 520;
+const HARD_RESHUFFLE_REVEAL_MS: u64 = 1150;
+const EXPERT_STAGE_1_REVEAL_MS: u64 = 880;
+const EXPERT_STAGE_2_REVEAL_MS: u64 = 730;
+const EXPERT_STAGE_3_REVEAL_MS: u64 = 600;
 
 #[derive(Clone, Copy, Debug)]
 pub struct PunishmentPlan {
@@ -41,7 +45,7 @@ pub fn register_mismatch_and_plan_reshuffle_for(
             st.reset_impossible_pressure();
             return Some(PunishmentPlan {
                 reveal_count: 2,
-                reveal_ms: 320,
+                reveal_ms: MEDIUM_RESHUFFLE_REVEAL_MS,
                 reshuffle_hidden: true,
                 reveal_all_hidden: false,
                 source_difficulty: difficulty,
@@ -87,9 +91,9 @@ pub fn register_mismatch_and_plan_reshuffle_for(
     st.impossible_punish_stage = st.impossible_punish_stage.saturating_add(1);
 
     let (reveal_count, reveal_ms) = match st.impossible_punish_stage {
-        1 => (7, 650),
-        2 => (5, 540),
-        _ => (4, 430),
+        1 => (7, EXPERT_STAGE_1_REVEAL_MS),
+        2 => (5, EXPERT_STAGE_2_REVEAL_MS),
+        _ => (4, EXPERT_STAGE_3_REVEAL_MS),
     };
 
     Some(PunishmentPlan {

@@ -12,5 +12,5 @@ mod records;
 mod scene;
 mod session_save;
 mod state;
-mod tri;
-mod tri_penalties;
+mod trio;
+mod trio_penalties;

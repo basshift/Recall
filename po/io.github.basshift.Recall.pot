@@ -1,0 +1,392 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Recall\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/ui/app.rs:45 src/ui/dialogs.rs:380 src/ui/hud.rs:48
+msgid "Preferences"
+msgstr ""
+
+#: src/ui/app.rs:52 src/ui/dialogs.rs:373
+msgid "General"
+msgstr ""
+
+#: src/ui/app.rs:55
+msgid "Appearance"
+msgstr ""
+
+#: src/ui/app.rs:58
+msgid "Theme"
+msgstr ""
+
+#: src/ui/app.rs:59
+msgid "Select app color scheme"
+msgstr ""
+
+#: src/ui/app.rs:61
+msgid "System"
+msgstr ""
+
+#: src/ui/app.rs:61
+msgid "Light"
+msgstr ""
+
+#: src/ui/app.rs:61
+msgid "Dark"
+msgstr ""
+
+#: src/ui/app.rs:83
+msgid "Reduce motion"
+msgstr ""
+
+#: src/ui/app.rs:84
+msgid "Turn off interface animations"
+msgstr ""
+
+#: src/ui/app.rs:99
+msgid "Data"
+msgstr ""
+
+#: src/ui/app.rs:101 src/ui/app.rs:117
+msgid "Reset local records"
+msgstr ""
+
+#: src/ui/app.rs:102
+msgid "Clear all saved scores on this device"
+msgstr ""
+
+#: src/ui/app.rs:105 src/ui/app.rs:121
+msgid "Reset"
+msgstr ""
+
+#: src/ui/app.rs:118
+msgid "This will permanently remove all saved scores on this device"
+msgstr ""
+
+#: src/ui/app.rs:120 src/ui/app.rs:723 src/ui/app.rs:761
+msgid "Cancel"
+msgstr ""
+
+#: src/ui/app.rs:131
+msgid "Records reset"
+msgstr ""
+
+#: src/ui/app.rs:132
+msgid "Local scores were cleared successfully"
+msgstr ""
+
+#: src/ui/app.rs:134
+msgid "OK"
+msgstr ""
+
+#: src/ui/app.rs:595
+msgid "Infinite Round"
+msgstr ""
+
+#: src/ui/app.rs:596 src/ui/hud.rs:107 src/ui/mode_dialogs.rs:123 src/ui/records.rs:626 src/ui/records.rs:728
+msgid "Trio"
+msgstr ""
+
+#: src/ui/app.rs:597 src/ui/hud.rs:111 src/ui/mode_dialogs.rs:110 src/ui/records.rs:628 src/ui/records.rs:726
+msgid "Classic"
+msgstr ""
+
+#: src/ui/app.rs:613
+msgid "Continue"
+msgstr ""
+
+#: src/ui/app.rs:676
+msgid "You chose the finish"
+msgstr ""
+
+#: src/ui/app.rs:677
+msgid "Infinite on your terms"
+msgstr ""
+
+#: src/ui/app.rs:680 src/ui/infinite.rs:31 src/ui/records.rs:488
+msgid "Round"
+msgstr ""
+
+#: src/ui/app.rs:682 src/ui/records.rs:489
+msgid "Milestone"
+msgstr ""
+
+#: src/ui/app.rs:684 src/ui/records.rs:632
+msgid "Time"
+msgstr ""
+
+#: src/ui/app.rs:720
+msgid "End run?"
+msgstr ""
+
+#: src/ui/app.rs:721
+msgid "Your current Infinite score will be saved and this run will end"
+msgstr ""
+
+#: src/ui/app.rs:724 src/ui/hud.rs:25 src/ui/hud.rs:41
+msgid "End run"
+msgstr ""
+
+#: src/ui/app.rs:758
+msgid "Restart game?"
+msgstr ""
+
+#: src/ui/app.rs:759
+msgid "Your current progress will be lost and a new game will start."
+msgstr ""
+
+#: src/ui/app.rs:762
+msgid "Restart"
+msgstr ""
+
+#: src/ui/app.rs:1534
+msgid "Victory"
+msgstr ""
+
+#: src/ui/app.rs:1549
+msgid "Home"
+msgstr ""
+
+#: src/ui/app.rs:1823
+msgid "Recall"
+msgstr ""
+
+#: src/ui/app.rs:1850
+msgid "New Game"
+msgstr ""
+
+#: src/ui/app.rs:2131
+msgid "Well done!"
+msgstr ""
+
+#: src/ui/app.rs:2153
+msgid "Play Again"
+msgstr ""
+
+#: src/ui/app.rs:2155
+msgid "Main Menu"
+msgstr ""
+
+#: src/ui/dialogs.rs:18 src/ui/hud.rs:50
+msgid "How to Play"
+msgstr ""
+
+#: src/ui/dialogs.rs:19
+msgid "Read, Then Recall"
+msgstr ""
+
+#: src/ui/dialogs.rs:20
+msgid "Brief reveal first. Keep mental anchors, then match from memory"
+msgstr ""
+
+#: src/ui/dialogs.rs:23
+msgid "Match the Full Board"
+msgstr ""
+
+#: src/ui/dialogs.rs:24
+msgid "Clear every card to win. Build a steady rhythm and protect your accuracy"
+msgstr ""
+
+#: src/ui/dialogs.rs:27
+msgid "Know the Modes"
+msgstr ""
+
+#: src/ui/dialogs.rs:28
+msgid "Classic matches pairs, Trio matches three, and Infinite escalates pace every round"
+msgstr ""
+
+#: src/ui/dialogs.rs:31
+msgid "Challenge Scale"
+msgstr ""
+
+#: src/ui/dialogs.rs:32
+msgid "Pick your level: bigger boards, less time to memorize"
+msgstr ""
+
+#: src/ui/dialogs.rs:35
+msgid "Restless Board"
+msgstr ""
+
+#: src/ui/dialogs.rs:36
+msgid "Stumble several times and hidden cards may reshuffle"
+msgstr ""
+
+#: src/ui/dialogs.rs:39
+msgid "Previous"
+msgstr ""
+
+#: src/ui/dialogs.rs:40
+msgid "Next"
+msgstr ""
+
+#: src/ui/dialogs.rs:356
+msgid "A memory game for finding pairs."
+msgstr ""
+
+#: src/ui/dialogs.rs:372
+msgid "Game"
+msgstr ""
+
+#: src/ui/dialogs.rs:374
+msgid "Move between cards"
+msgstr ""
+
+#: src/ui/dialogs.rs:375
+msgid "Flip selected card"
+msgstr ""
+
+#: src/ui/dialogs.rs:376
+msgid "Restart game or end run"
+msgstr ""
+
+#: src/ui/dialogs.rs:377
+msgid "Back to menu"
+msgstr ""
+
+#: src/ui/dialogs.rs:378
+msgid "Show shortcuts"
+msgstr ""
+
+#: src/ui/dialogs.rs:379
+msgid "How to play"
+msgstr ""
+
+#: src/ui/dialogs.rs:381
+msgid "Back to main menu"
+msgstr ""
+
+#: src/ui/dialogs.rs:382
+msgid "Quit"
+msgstr ""
+
+#: src/ui/hud.rs:43
+msgid "Restart game"
+msgstr ""
+
+#: src/ui/hud.rs:47
+msgid "Score"
+msgstr ""
+
+#: src/ui/hud.rs:49
+msgid "Keyboard Shortcuts"
+msgstr ""
+
+#: src/ui/hud.rs:51
+msgid "About Recall"
+msgstr ""
+
+#: src/ui/infinite.rs:19 src/ui/infinite.rs:26 src/ui/infinite.rs:31 src/ui/mode_dialogs.rs:136 src/ui/records.rs:730
+msgid "Infinite"
+msgstr ""
+
+#: src/ui/infinite.rs:20
+msgid "Expert Survival"
+msgstr ""
+
+#: src/ui/infinite.rs:27
+msgid "Hard Survival"
+msgstr ""
+
+#: src/ui/infinite_flow.rs:230 src/ui/mode_dialogs.rs:19
+msgid "Expert"
+msgstr ""
+
+#: src/ui/infinite_flow.rs:232 src/ui/mode_dialogs.rs:18
+msgid "Hard"
+msgstr ""
+
+#: src/ui/infinite_flow.rs:240
+msgid "Level up"
+msgstr ""
+
+#: src/ui/mode_dialogs.rs:16
+msgid "Easy"
+msgstr ""
+
+#: src/ui/mode_dialogs.rs:17
+msgid "Medium"
+msgstr ""
+
+#: src/ui/mode_dialogs.rs:111
+msgid "Match identical cards and clear the full board"
+msgstr ""
+
+#: src/ui/mode_dialogs.rs:124
+msgid "Form 3-card groups and clear each stage"
+msgstr ""
+
+#: src/ui/mode_dialogs.rs:137
+msgid "Classic core rules with endless progression"
+msgstr ""
+
+#: src/ui/mode_dialogs.rs:253
+msgid "Classic Difficulty"
+msgstr ""
+
+#: src/ui/mode_dialogs.rs:260
+msgid "Trio Difficulty"
+msgstr ""
+
+#: src/ui/mode_dialogs.rs:279
+msgid "Choose Mode"
+msgstr ""
+
+#: src/ui/records.rs:209
+msgid "Unknown date"
+msgstr ""
+
+#: src/ui/records.rs:453
+msgid "No scores yet"
+msgstr ""
+
+#: src/ui/records.rs:454
+msgid "Finish a run to populate this section"
+msgstr ""
+
+#: src/ui/records.rs:466 src/ui/records.rs:634
+msgid "Precision"
+msgstr ""
+
+#: src/ui/records.rs:538 src/ui/records.rs:563
+msgid "Best runs"
+msgstr ""
+
+#: src/ui/records.rs:544 src/ui/records.rs:569
+msgid "Recent runs"
+msgstr ""
+
+#: src/ui/records.rs:620
+msgid "Flawless Memory!"
+msgstr ""
+
+#: src/ui/records.rs:621
+msgid "Sharp Mind!"
+msgstr ""
+
+#: src/ui/records.rs:622
+msgid "Keep the Momentum!"
+msgstr ""
+
+#: src/ui/records.rs:623
+msgid "Growing Strong!"
+msgstr ""
+
+#: src/ui/records.rs:626 src/ui/records.rs:628
+msgid "completed"
+msgstr ""
+
+#: src/ui/records.rs:636
+msgid "Harmony"
+msgstr ""
+
+#: src/ui/records.rs:688
+msgid "Local Score"
+msgstr ""

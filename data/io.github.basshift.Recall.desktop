@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Recall
-Comment=A beautiful memory game
+Comment=A memory game that starts calm and ramps up
 Type=Application
 Exec=recall
 Icon=io.github.basshift.Recall

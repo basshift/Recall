@@ -9,12 +9,17 @@ fn main() {
     println!("cargo:rerun-if-changed=data/victory/rank-a.svg");
     println!("cargo:rerun-if-changed=data/victory/rank-b.svg");
     println!("cargo:rerun-if-changed=data/victory/rank-c.svg");
+    println!("cargo:rerun-if-changed=data/victory/finish-flag.svg");
+    println!("cargo:rerun-if-changed=data/howto/01-flow.svg");
+    println!("cargo:rerun-if-changed=data/howto/02-goal.svg");
+    println!("cargo:rerun-if-changed=data/howto/03-modes.svg");
+    println!("cargo:rerun-if-changed=data/howto/04-difficulty.svg");
+    println!("cargo:rerun-if-changed=data/howto/05-restless.svg");
     println!("cargo:rerun-if-changed=data/icons/hicolor/index.theme");
     println!("cargo:rerun-if-changed=data/icons/hicolor/scalable/apps/io.github.basshift.Recall.svg");
     println!(
         "cargo:rerun-if-changed=data/icons/hicolor/scalable/apps/io.github.basshift.Recall.Devel.svg"
     );
-
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR not set");
     let output = std::path::Path::new(&out_dir).join("recall.gresource");
     let status = std::process::Command::new("glib-compile-resources")

@@ -1,7 +1,6 @@
 use super::state::Difficulty;
 
-pub const CLASSIC_LEVEL_OPTIONS: [(&str, u8); 4] =
-    [("Easy", 1), ("Normal", 2), ("Hard", 3), ("Expert", 4)];
+pub const CLASSIC_LEVEL_OPTIONS: [u8; 4] = [1, 2, 3, 4];
 
 pub fn difficulty_from_level(level: u8) -> Difficulty {
     match level {

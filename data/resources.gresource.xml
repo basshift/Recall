@@ -10,10 +10,15 @@
     <file preprocess="xml-stripblanks">victory/rank-a.svg</file>
     <file preprocess="xml-stripblanks">victory/rank-b.svg</file>
     <file preprocess="xml-stripblanks">victory/rank-c.svg</file>
+    <file preprocess="xml-stripblanks">victory/finish-flag.svg</file>
+    <file preprocess="xml-stripblanks">howto/01-flow.svg</file>
+    <file preprocess="xml-stripblanks">howto/02-goal.svg</file>
+    <file preprocess="xml-stripblanks">howto/03-modes.svg</file>
+    <file preprocess="xml-stripblanks">howto/04-difficulty.svg</file>
+    <file preprocess="xml-stripblanks">howto/05-restless.svg</file>
   </gresource>
   <gresource prefix="/io/github/basshift/Recall/icons/hicolor">
     <file>index.theme</file>
-    <file alias="scalable/apps/io.github.basshift.recall.svg" preprocess="xml-stripblanks">scalable/apps/io.github.basshift.Recall.svg</file>
     <file preprocess="xml-stripblanks">scalable/apps/io.github.basshift.Recall.svg</file>
     <file preprocess="xml-stripblanks">scalable/apps/io.github.basshift.Recall.Devel.svg</file>
   </gresource>

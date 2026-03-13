@@ -1,23 +1,74 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use gio::Menu;
 use gtk4::glib;
 use gtk4::prelude::*;
+
+use crate::i18n::tr;
 
 use super::infinite;
 use super::state::{AppState, Difficulty};
 
+fn refresh_header_action_button(st: &AppState) {
+    let Some(button) = &st.restart_button else {
+        return;
+    };
+
+    button.set_child(None::<&gtk4::Widget>);
+    if infinite::is_infinite(st.difficulty) {
+        let icon = gtk4::Image::builder()
+            .icon_name("media-playback-stop-symbolic")
+            .pixel_size(16)
+            .build();
+        button.set_child(Some(&icon));
+        button.set_tooltip_text(Some(&tr("End run")));
+        button.set_sensitive(st.active_session_started && !st.preview_active && !st.lock_input);
+        button.set_visible(true);
+    } else {
+        button.set_visible(false);
+    }
+}
+
+fn refresh_header_menu_button(st: &AppState, include_game_action: bool) {
+    let Some(menu_button) = &st.menu_button else {
+        return;
+    };
+
+    let menu_model = Menu::new();
+    if include_game_action {
+        let game_action_label = if infinite::is_infinite(st.difficulty) {
+            tr("End run")
+        } else {
+            tr("Restart game")
+        };
+        menu_model.append(Some(&game_action_label), Some("app.game-action"));
+    }
+    menu_model.append(Some(&tr("Score")), Some("app.score"));
+    menu_model.append(Some(&tr("Preferences")), Some("app.preferences"));
+    menu_model.append(Some(&tr("Keyboard Shortcuts")), Some("win.show-help-overlay"));
+    menu_model.append(Some(&tr("How to Play")), Some("app.instructions"));
+    menu_model.append(Some(&tr("About Recall")), Some("app.about"));
+    menu_button.set_menu_model(Some(&menu_model));
+}
+
 pub(super) fn set_header_menu(state: &Rc<RefCell<AppState>>) {
     let st = state.borrow();
-    if let (Some(header), Some(title)) = (&st.header, &st.title_menu) {
-        header.set_title_widget(Some(title));
+    if let Some(header) = &st.header {
+        let empty_title = gtk4::Label::new(None);
+        empty_title.set_text("");
+        header.set_title_widget(Some(&empty_title));
     }
     if let Some(back) = &st.back_button {
         back.set_visible(false);
     }
+    if let Some(timer_label) = &st.header_timer_label {
+        timer_label.set_visible(false);
+    }
     if let Some(restart) = &st.restart_button {
         restart.set_visible(false);
     }
+    refresh_header_menu_button(&st, false);
 }
 
 pub(super) fn set_header_game(state: &Rc<RefCell<AppState>>) {
@@ -29,9 +80,8 @@ pub(super) fn set_header_game(state: &Rc<RefCell<AppState>>) {
     if let Some(back) = &st.back_button {
         back.set_visible(true);
     }
-    if let Some(restart) = &st.restart_button {
-        restart.set_visible(true);
-    }
+    refresh_header_action_button(&st);
+    refresh_header_menu_button(&st, true);
 }
 
 pub(super) fn set_header_victory(state: &Rc<RefCell<AppState>>) {
@@ -42,28 +92,47 @@ pub(super) fn set_header_victory(state: &Rc<RefCell<AppState>>) {
     if let Some(back) = &st.back_button {
         back.set_visible(true);
     }
+    if let Some(timer_label) = &st.header_timer_label {
+        timer_label.set_visible(false);
+    }
     if let Some(restart) = &st.restart_button {
         restart.set_visible(false);
     }
+    refresh_header_menu_button(&st, false);
 }
 
 pub(super) fn update_subtitle(st: &AppState) {
+    refresh_header_action_button(st);
+    let mode_label = if st.difficulty == Difficulty::Trio {
+        format!("{} · {}", tr("Trio"), tr(infinite::level_name(st.trio_level)))
+    } else if infinite::is_infinite(st.difficulty) {
+        infinite::mode_label(st)
+    } else {
+        format!("{} · {}", tr("Classic"), tr(st.difficulty.name()))
+    };
+    let timer_text = if st.preview_active {
+        let remain = st.preview_remaining_ms as f64 / 1000.0;
+        format!("{:.1}s", remain)
+    } else {
+        let mins = st.seconds_elapsed / 60;
+        let secs = st.seconds_elapsed % 60;
+        format!("{:02}:{:02}", mins, secs)
+    };
+
     if let Some(subtitle) = &st.title_game_subtitle {
-        let mode_label = if st.difficulty == Difficulty::Tri {
-            format!("Tri {}", infinite::level_name(st.tri_level))
-        } else if infinite::is_infinite(st.difficulty) {
-            infinite::mode_label(st)
+        if st.compact_layout {
+            subtitle.set_text(&mode_label);
         } else {
-            format!("Classic {}", st.difficulty.name())
-        };
-        if st.preview_active {
-            let remain = st.preview_remaining_ms as f64 / 1000.0;
-            subtitle.set_text(&format!("{} | Memorize {:.1}s", mode_label, remain));
-        } else {
-            let mins = st.seconds_elapsed / 60;
-            let secs = st.seconds_elapsed % 60;
-            subtitle.set_text(&format!("{} | {:02}:{:02}", mode_label, mins, secs));
+            subtitle.set_text(&format!("{} · {}", mode_label, timer_text));
         }
+    }
+    if let Some(timer_label) = &st.header_timer_label {
+        let show_mobile_timer = st.compact_layout
+            && (st.preview_active
+                || (st.active_session_started
+                    && (st.timer_handle.is_some() || st.seconds_elapsed > 0)));
+        timer_label.set_visible(show_mobile_timer);
+        timer_label.set_text(&timer_text);
     }
 }
 

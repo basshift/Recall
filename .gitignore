@@ -4,6 +4,8 @@
 # Flatpak build artifacts
 /.flatpak-builder/
 /build-flatpak/
+/repo/
+/Recall.flatpak
 
 # Local logs
 /logs/
@@ -13,13 +15,16 @@
 .DS_Store
 *.swp
 *.swo
+*~
+.xdp-*
+
+# Generated i18n binaries
+/po/*/LC_MESSAGES/*.mo
 
 # Local runtime data
 /records.json
 
 # Private working notes (keep local, do not publish)
 /AGENTS.md
-/journal.md
-/journal.archive.md
+/memory/
 /gemini.md
-/perfil_desarrollador_gnome_clean.md

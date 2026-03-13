@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Once;
 
@@ -10,8 +10,10 @@ use libadwaita as adw;
 use adw::prelude::*;
 use gio::SimpleAction;
 
+use crate::i18n::tr;
+
 use super::board::CONTENT_MARGIN;
-use super::dialogs::{show_about_dialog, show_instructions_dialog};
+use super::dialogs::{create_keyboard_shortcuts_overlay, show_about_dialog, show_instructions_dialog};
 use super::hud::{
     set_header_game,
     set_header_menu,
@@ -26,16 +28,123 @@ use super::classic_penalties;
 use super::mode_dialogs::show_mode_dialog;
 use super::records::{
     load_records,
-    register_infinite_round_result,
+    register_infinite_run_result,
     register_non_infinite_result,
+    reset_local_records,
     show_memory_dialog,
 };
 use super::scene::{build_board_for_difficulty, rebuild_board, show_menu, show_victory};
 use super::session_save;
-use super::state::{AppState, Difficulty, TileStatus};
-use super::tri_penalties;
+use super::state::{AppState, Difficulty, Rank, TileStatus};
+use super::trio_penalties;
 use super::debug_tools;
 use super::infinite_flow;
+
+fn show_preferences_dialog(state: &Rc<RefCell<AppState>>, app: &adw::Application) -> adw::PreferencesDialog {
+    let dialog = adw::PreferencesDialog::new();
+    dialog.set_title(&tr("Preferences"));
+    dialog.set_can_close(true);
+    dialog.set_follows_content_size(false);
+    dialog.set_content_width(420);
+    dialog.set_content_height(360);
+
+    let page = adw::PreferencesPage::new();
+    page.set_title(&tr("General"));
+
+    let appearance_group = adw::PreferencesGroup::new();
+    appearance_group.set_title(&tr("Appearance"));
+
+    let theme_row = adw::ComboRow::builder()
+        .title(tr("Theme"))
+        .subtitle(tr("Select app color scheme"))
+        .build();
+    let theme_values = [tr("System"), tr("Light"), tr("Dark")];
+    let theme_refs: Vec<&str> = theme_values.iter().map(|s| s.as_str()).collect();
+    let theme_model = gtk::StringList::new(&theme_refs);
+    theme_row.set_model(Some(&theme_model));
+    let style_manager = adw::StyleManager::default();
+    let initial_theme_index = match style_manager.color_scheme() {
+        adw::ColorScheme::ForceLight | adw::ColorScheme::PreferLight => 1,
+        adw::ColorScheme::ForceDark | adw::ColorScheme::PreferDark => 2,
+        _ => 0,
+    };
+    theme_row.set_selected(initial_theme_index);
+    theme_row.connect_selected_notify(move |row| {
+        let scheme = match row.selected() {
+            1 => adw::ColorScheme::ForceLight,
+            2 => adw::ColorScheme::ForceDark,
+            _ => adw::ColorScheme::Default,
+        };
+        adw::StyleManager::default().set_color_scheme(scheme);
+    });
+    appearance_group.add(&theme_row);
+
+    let motion_row = adw::SwitchRow::builder()
+        .title(tr("Reduce motion"))
+        .subtitle(tr("Turn off interface animations"))
+        .build();
+    if let Some(settings) = gtk::Settings::default() {
+        motion_row.set_active(!settings.is_gtk_enable_animations());
+    }
+    motion_row.connect_active_notify(|row| {
+        if let Some(settings) = gtk::Settings::default() {
+            settings.set_gtk_enable_animations(!row.is_active());
+        }
+    });
+    appearance_group.add(&motion_row);
+
+    page.add(&appearance_group);
+
+    let data_group = adw::PreferencesGroup::new();
+    data_group.set_title(&tr("Data"));
+    let reset_row = adw::ActionRow::builder()
+        .title(tr("Reset local records"))
+        .subtitle(tr("Clear all saved scores on this device"))
+        .build();
+    reset_row.set_activatable(false);
+    let reset_button = gtk::Button::with_label(&tr("Reset"));
+    reset_button.add_css_class("destructive-action");
+    reset_button.set_halign(gtk::Align::End);
+    reset_button.set_valign(gtk::Align::Center);
+    reset_button.set_hexpand(false);
+    reset_button.set_vexpand(false);
+    reset_row.add_suffix(&reset_button);
+    {
+        let dialog = dialog.clone();
+        let state = state.clone();
+        reset_button.connect_clicked(move |_| {
+            let confirm = adw::AlertDialog::builder()
+                .heading(tr("Reset local records"))
+                .body(tr("This will permanently remove all saved scores on this device"))
+                .build();
+            confirm.add_response("cancel", &tr("Cancel"));
+            confirm.add_response("reset", &tr("Reset"));
+            confirm.set_close_response("cancel");
+            confirm.set_default_response(Some("cancel"));
+            confirm.set_response_appearance("reset", adw::ResponseAppearance::Destructive);
+            let dialog_after = dialog.clone();
+            let state_after = state.clone();
+            confirm.connect_response(None, move |_, response| {
+                if response == "reset" {
+                    reset_local_records(&state_after);
+                    let done = adw::AlertDialog::builder()
+                        .heading(tr("Records reset"))
+                        .body(tr("Local scores were cleared successfully"))
+                        .build();
+                    done.add_response("ok", &tr("OK"));
+                    done.present(Some(&dialog_after));
+                }
+            });
+            confirm.present(Some(&dialog));
+        });
+    }
+    data_group.add(&reset_row);
+    page.add(&data_group);
+
+    dialog.add(&page);
+    dialog.present(app.active_window().as_ref());
+    dialog
+}
 
 pub(super) fn clear_flip_classes(button: &gtk::Button) {
     button.remove_css_class("flip-hide");
@@ -91,9 +200,182 @@ const FLIP_PHASE_MS: u64 = 260;
 const CLASSIC_RESHUFFLE_FLIP_MS: u64 = 760;
 const HARD_ENDGAME_RESHUFFLE_FLIP_MS: u64 = 620;
 const INFINITE_PRE_TRANSITION_WAIT_MS: u64 = 500;
-const MATCH_BUMP_DELAY_MS: u64 = 250;
-const MATCH_BUMP_DURATION_MS: u64 = 1300;
+const MATCH_BUMP_DELAY_MS: u64 = 120;
+const MATCH_BUMP_DURATION_MS: u64 = 700;
+const FINAL_MATCH_DIM_SETTLE_MS: u64 = 110;
 const PREVIEW_REVEAL_MIN_DELAY_MS: u64 = 500;
+const VICTORY_FLIP_SHOW_DURATION_MS: u64 = 380;
+const VICTORY_CASCADE_END_BUFFER_MS: u64 = 32;
+
+fn sync_window_maximized_class(win: &adw::ApplicationWindow) {
+    if win.is_maximized() {
+        win.add_css_class("window-maximized");
+    } else {
+        win.remove_css_class("window-maximized");
+    }
+}
+
+pub(super) fn refresh_board_shell_ratio(state: &Rc<RefCell<AppState>>) {
+    let (board_shell, grid_cols, grid_rows, compact_layout) = {
+        let st = state.borrow();
+        (
+            st.board_shell.clone(),
+            st.grid_cols,
+            st.grid_rows,
+            st.compact_layout,
+        )
+    };
+    let Some(board_shell) = board_shell else {
+        return;
+    };
+    let ratio = if compact_layout && grid_rows > 0 {
+        grid_cols as f32 / grid_rows as f32
+    } else {
+        1.0
+    };
+    board_shell.set_ratio(ratio.max(0.2));
+}
+
+fn sync_window_layout_classes(win: &adw::ApplicationWindow, state: &Rc<RefCell<AppState>>) {
+    let width = win.allocated_width().max(1);
+    let height = win.allocated_height().max(1);
+    let compact_layout = (width < 760 && height < 620) || width < 520;
+    let ultra_compact_layout = (width < 620 && height < 520) || width < 440;
+
+    if compact_layout {
+        win.add_css_class("window-compact");
+    } else {
+        win.remove_css_class("window-compact");
+    }
+    if ultra_compact_layout {
+        win.add_css_class("window-ultra-compact");
+    } else {
+        win.remove_css_class("window-ultra-compact");
+    }
+
+    let layout_changed = {
+        let mut st = state.borrow_mut();
+        let changed = st.compact_layout != compact_layout;
+        st.compact_layout = compact_layout;
+        changed
+    };
+    refresh_board_shell_ratio(state);
+    if layout_changed {
+        let st = state.borrow();
+        update_subtitle(&st);
+    }
+}
+
+fn is_game_view_active(st: &AppState) -> bool {
+    st.view_stack
+        .as_ref()
+        .and_then(|stack| stack.visible_child_name())
+        .as_deref()
+        == Some("game")
+}
+
+fn can_show_keyboard_focus(st: &AppState) -> bool {
+    is_game_view_active(st)
+        && !st.preview_active
+        && !st.lock_input
+        && st.tiles.iter().any(|tile| tile.status == TileStatus::Hidden)
+}
+
+fn clear_keyboard_focus(state: &Rc<RefCell<AppState>>) {
+    let buttons = {
+        let st = state.borrow();
+        st.grid_buttons.clone()
+    };
+    for button in buttons {
+        button.remove_css_class("kbd-focus");
+    }
+}
+
+fn focused_tile_index(st: &AppState) -> Option<usize> {
+    st.grid_buttons.iter().position(|button| {
+        button.has_focus() || button.has_visible_focus() || button.has_css_class("kbd-focus")
+    })
+}
+
+fn normalize_target_col(row: i32, col: i32, cols: i32, len: usize) -> i32 {
+    let mut target_col = col.clamp(0, cols.saturating_sub(1));
+    while target_col >= 0 {
+        let candidate = (row * cols + target_col) as usize;
+        if candidate < len {
+            return target_col;
+        }
+        target_col -= 1;
+    }
+    0
+}
+
+fn focus_tile_at_index(state: &Rc<RefCell<AppState>>, index: usize) -> bool {
+    let (buttons, button) = {
+        let st = state.borrow();
+        if !can_show_keyboard_focus(&st) {
+            return false;
+        }
+        (st.grid_buttons.clone(), st.grid_buttons.get(index).cloned())
+    };
+    let Some(button) = button else {
+        return false;
+    };
+    for (button_index, candidate) in buttons.iter().enumerate() {
+        if button_index == index {
+            candidate.add_css_class("kbd-focus");
+        } else {
+            candidate.remove_css_class("kbd-focus");
+        }
+    }
+    button.grab_focus();
+    true
+}
+
+fn move_board_focus(state: &Rc<RefCell<AppState>>, col_delta: i32, row_delta: i32) -> bool {
+    let next_index = {
+        let st = state.borrow();
+        if !is_game_view_active(&st) || st.grid_buttons.is_empty() || st.grid_cols <= 0 {
+            return false;
+        }
+
+        let current_index = focused_tile_index(&st).unwrap_or(0);
+        let cols = st.grid_cols;
+        let len = st.grid_buttons.len();
+        let max_row = ((len as i32 - 1) / cols).max(0);
+
+        let current_row = (current_index as i32 / cols).clamp(0, max_row);
+        let current_col = (current_index as i32 % cols).clamp(0, cols.saturating_sub(1));
+        let target_row = (current_row + row_delta).clamp(0, max_row);
+        let desired_col = current_col + col_delta;
+        let target_col = normalize_target_col(target_row, desired_col, cols, len);
+        (target_row * cols + target_col) as usize
+    };
+
+    focus_tile_at_index(state, next_index)
+}
+
+fn suppress_board_hover_for_keyboard(state: &Rc<RefCell<AppState>>) {
+    let st = state.borrow();
+    if !is_game_view_active(&st) || st.lock_input {
+        return;
+    }
+    if let Some(container) = &st.board_container {
+        container.add_css_class("no-hover");
+    }
+}
+
+fn activate_focused_tile(state: &Rc<RefCell<AppState>>) -> bool {
+    let tile_index = {
+        let st = state.borrow();
+        if !is_game_view_active(&st) || st.grid_buttons.is_empty() {
+            return false;
+        }
+        focused_tile_index(&st).unwrap_or(0)
+    };
+    handle_tile_click(state, tile_index);
+    true
+}
+
 #[derive(Clone, Copy)]
 struct CascadeProfile {
     start_delay_ms: u64,
@@ -148,7 +430,7 @@ fn cascade_profile_for(st: &AppState) -> CascadeProfile {
             pause_max_ms: 124,
             dual_corner_wave: true,
         },
-        Difficulty::Tri => match st.tri_level.clamp(1, 4) {
+        Difficulty::Trio => match st.trio_level.clamp(1, 4) {
             1 => CascadeProfile {
                 start_delay_ms: 650,
                 base_step_ms: 142,
@@ -160,13 +442,13 @@ fn cascade_profile_for(st: &AppState) -> CascadeProfile {
                 dual_corner_wave: false,
             },
             2 => CascadeProfile {
-                start_delay_ms: 560,
-                base_step_ms: 122,
-                base_pause_ms: 80,
-                step_min_ms: 68,
-                step_max_ms: 196,
-                pause_min_ms: 64,
-                pause_max_ms: 162,
+                start_delay_ms: 500,
+                base_step_ms: 112,
+                base_pause_ms: 72,
+                step_min_ms: 62,
+                step_max_ms: 184,
+                pause_min_ms: 58,
+                pause_max_ms: 148,
                 dual_corner_wave: false,
             },
             3 => CascadeProfile {
@@ -245,6 +527,7 @@ fn build_cascade_waves(total_cards: usize, dual_corner_wave: bool) -> Vec<Vec<us
 struct OverlayPauseState {
     paused: bool,
     previous_lock_input: bool,
+    paused_during_preview: bool,
 }
 
 fn pause_game_for_overlay(state: &Rc<RefCell<AppState>>) -> OverlayPauseState {
@@ -255,19 +538,21 @@ fn pause_game_for_overlay(state: &Rc<RefCell<AppState>>) -> OverlayPauseState {
         .and_then(|stack| stack.visible_child_name())
         .as_deref()
         == Some("game");
-    if !in_game_view || st.timer_handle.is_none() {
+    if !in_game_view {
+        return OverlayPauseState::default();
+    }
+
+    let has_active_game_flow = st.timer_handle.is_some() || st.preview_active || st.lock_input;
+    if !has_active_game_flow {
         return OverlayPauseState::default();
     }
 
     let pause_state = OverlayPauseState {
         paused: true,
         previous_lock_input: st.lock_input,
+        paused_during_preview: st.preview_active,
     };
-    stop_timer(&mut st);
     st.lock_input = true;
-    if let Some(subtitle) = &st.title_game_subtitle {
-        subtitle.set_text("PAUSED");
-    }
     pause_state
 }
 
@@ -276,33 +561,80 @@ fn resume_game_after_overlay(state: &Rc<RefCell<AppState>>, pause_state: Overlay
         return;
     }
 
-    let should_resume_timer = {
-        let mut st = state.borrow_mut();
-        let in_game_view = st
-            .view_stack
-            .as_ref()
-            .and_then(|stack| stack.visible_child_name())
-            .as_deref()
-            == Some("game");
-        if !in_game_view {
-            return;
-        }
+    let mut st = state.borrow_mut();
+    let in_game_view = st
+        .view_stack
+        .as_ref()
+        .and_then(|stack| stack.visible_child_name())
+        .as_deref()
+        == Some("game");
+    if !in_game_view {
+        return;
+    }
 
-        st.lock_input = pause_state.previous_lock_input;
-        update_subtitle(&st);
-        st.timer_handle.is_none() && !st.preview_active && st.active_session_started
+    let preview_finished_while_paused = pause_state.paused_during_preview && !st.preview_active;
+    st.lock_input = if preview_finished_while_paused {
+        false
+    } else {
+        pause_state.previous_lock_input
     };
+    update_subtitle(&st);
+}
 
-    if should_resume_timer {
-        start_timer(state, false);
+fn saved_run_level_name(level: u8) -> &'static str {
+    match level.clamp(1, 4) {
+        1 => "Easy",
+        2 => "Medium",
+        3 => "Hard",
+        _ => "Expert",
     }
 }
 
-fn refresh_continue_button_state(st: &AppState) {
+fn saved_run_subtitle(saved_run: &session_save::SavedRun) -> String {
+    let mode_label = match saved_run.difficulty {
+        Difficulty::Infinite => format!("{} {}", tr("Infinite Round"), saved_run.infinite_round.max(1)),
+        Difficulty::Trio => format!("{} {}", tr("Trio"), tr(saved_run_level_name(saved_run.trio_level))),
+        _ => format!("{} {}", tr("Classic"), tr(saved_run.difficulty.name())),
+    };
+    let mins = saved_run.seconds_elapsed / 60;
+    let secs = saved_run.seconds_elapsed % 60;
+    format!("{mode_label} · {mins:02}:{secs:02}")
+}
+
+fn set_continue_button_content(
+    button: &gtk::Button,
+    saved_run: Option<&session_save::SavedRun>,
+) {
+    let content = gtk::Box::new(gtk::Orientation::Vertical, 2);
+    content.add_css_class("continue-button-content");
+    content.set_halign(gtk::Align::Center);
+    content.set_valign(gtk::Align::Center);
+
+    let title = gtk::Label::new(Some(&tr("Continue")));
+    title.add_css_class("continue-button-title");
+    title.set_halign(gtk::Align::Center);
+    title.set_xalign(0.5);
+    content.append(&title);
+
+    if let Some(saved_run) = saved_run {
+        let subtitle = gtk::Label::new(Some(&saved_run_subtitle(saved_run)));
+        subtitle.add_css_class("continue-button-subtitle");
+        subtitle.add_css_class("caption");
+        subtitle.set_halign(gtk::Align::Center);
+        subtitle.set_xalign(0.5);
+        content.append(&subtitle);
+    }
+
+    button.set_child(Some(&content));
+}
+
+pub(super) fn refresh_continue_button_state(st: &AppState) {
     if let Some(button) = &st.continue_button {
-        let has_saved = session_save::has_saved_run();
+        let saved_run = session_save::load_saved_run();
+        let has_saved = saved_run.is_some();
         button.set_visible(has_saved);
         button.set_sensitive(has_saved);
+        set_continue_button_content(button, saved_run.as_ref());
     }
 }
 
@@ -322,6 +654,148 @@ fn mark_run_dirty(st: &mut AppState) {
     }
 }
 
+fn should_finalize_infinite_run(st: &AppState) -> bool {
+    st.difficulty == Difficulty::Infinite
+        && st.active_session_started
+        && (st.seconds_elapsed > 0 || st.run_matches > 0 || st.run_mismatches > 0)
+}
+
+fn finalize_infinite_run_if_needed(st: &mut AppState) {
+    if should_finalize_infinite_run(st) {
+        register_infinite_run_result(st);
+        st.active_session_started = false;
+        clear_saved_run_and_refresh(st);
+    }
+}
+
+fn prepare_infinite_finish_victory(st: &mut AppState) {
+    let mins = st.seconds_elapsed / 60;
+    let secs = st.seconds_elapsed % 60;
+    let elapsed = format!("{mins:02}:{secs:02}");
+    st.victory_art_resource = Some("/io/github/basshift/Recall/victory/finish-flag.svg".to_string());
+    st.victory_title_text = tr("You chose the finish");
+    st.victory_message_text = tr("Infinite on your terms");
+    st.victory_stats_text = format!(
+        "{}: {}\n{}: {}\n{}: {}",
+        tr("Round"),
+        st.infinite_round,
+        tr("Milestone"),
+        infinite::mode_label(st),
+        tr("Time"),
+        elapsed
+    );
+    st.victory_rank = Rank::C;
+}
+
+fn finish_infinite_run(state: &Rc<RefCell<AppState>>) {
+    {
+        let mut st = state.borrow_mut();
+        if !should_finalize_infinite_run(&st) {
+            return;
+        }
+        stop_timer(&mut st);
+        stop_preview(&mut st);
+        st.game_id = st.game_id.wrapping_add(1);
+        st.lock_input = false;
+        st.flipped_indices.clear();
+        register_infinite_run_result(&mut st);
+        prepare_infinite_finish_victory(&mut st);
+        st.active_session_started = false;
+        clear_saved_run_and_refresh(&mut st);
+    }
+    show_victory(state);
+}
+
+fn maybe_finish_infinite_run(state: &Rc<RefCell<AppState>>, app: &adw::Application) {
+    let can_finish = {
+        let st = state.borrow();
+        should_finalize_infinite_run(&st) && !st.preview_active && !st.lock_input
+    };
+    if !can_finish {
+        return;
+    }
+
+    let pause_state = pause_game_for_overlay(state);
+    let dialog = adw::AlertDialog::builder()
+        .heading(tr("End run?"))
+        .body(tr("Your current Infinite score will be saved and this run will end"))
+        .build();
+    dialog.add_response("cancel", &tr("Cancel"));
+    dialog.add_response("finish", &tr("End run"));
+    dialog.set_default_response(Some("cancel"));
+    dialog.set_close_response("cancel");
+    dialog.set_response_appearance("finish", adw::ResponseAppearance::Destructive);
+
+    let state_response = state.clone();
+    dialog.connect_response(None, move |_, response| {
+        if response == "finish" {
+            finish_infinite_run(&state_response);
+        } else {
+            resume_game_after_overlay(&state_response, pause_state);
+        }
+    });
+
+    dialog.present(app.active_window().as_ref());
+}
+
+fn should_confirm_restart(st: &AppState) -> bool {
+    st.active_session_started || st.seconds_elapsed > 0 || st.run_matches > 0 || st.run_mismatches > 0
+}
+
+fn maybe_restart_game(state: &Rc<RefCell<AppState>>, app: &adw::Application) {
+    let should_confirm = {
+        let st = state.borrow();
+        should_confirm_restart(&st)
+    };
+
+    if !should_confirm {
+        restart_game(state);
+        return;
+    }
+
+    let pause_state = pause_game_for_overlay(state);
+    let dialog = adw::AlertDialog::builder()
+        .heading(tr("Restart game?"))
+        .body(tr("Your current progress will be lost and a new game will start."))
+        .build();
+    dialog.add_response("cancel", &tr("Cancel"));
+    dialog.add_response("restart", &tr("Restart"));
+    dialog.set_default_response(Some("cancel"));
+    dialog.set_close_response("cancel");
+    dialog.set_response_appearance("restart", adw::ResponseAppearance::Destructive);
+
+    let state_response = state.clone();
+    dialog.connect_response(None, move |_, response| {
+        if response == "restart" {
+            restart_game(&state_response);
+        } else {
+            resume_game_after_overlay(&state_response, pause_state);
+        }
+    });
+
+    dialog.present(app.active_window().as_ref());
+}
+
+fn trigger_contextual_game_action(state: &Rc<RefCell<AppState>>, app: &adw::Application) {
+    let in_game_view = {
+        let st = state.borrow();
+        is_game_view_active(&st)
+    };
+    if !in_game_view {
+        return;
+    }
+
+    let is_infinite_mode = {
+        let st = state.borrow();
+        infinite::is_infinite(st.difficulty)
+    };
+    if is_infinite_mode {
+        maybe_finish_infinite_run(state, app);
+    } else {
+        maybe_restart_game(state, app);
+    }
+}
+
 fn continue_last_run(state: &Rc<RefCell<AppState>>) {
     let Some(saved_run) = session_save::load_saved_run() else {
         let st = state.borrow();
@@ -333,10 +807,10 @@ fn continue_last_run(state: &Rc<RefCell<AppState>>) {
         let mut st = state.borrow_mut();
         stop_timer(&mut st);
         stop_preview(&mut st);
-        st.tri_level = saved_run.tri_level.clamp(1, 4);
-        st.recall_level = saved_run.recall_level.clamp(1, 4);
+        st.trio_level = saved_run.trio_level.clamp(1, 4);
+        st.infinite_level = saved_run.infinite_level.clamp(1, 4);
         st.set_difficulty(saved_run.difficulty);
-        if saved_run.difficulty == Difficulty::RecallMode {
+        if saved_run.difficulty == Difficulty::Infinite {
             st.infinite_round = saved_run.infinite_round.max(1);
         }
         if st.tiles.len() != saved_run.tiles.len() {
@@ -370,12 +844,16 @@ fn continue_last_run(state: &Rc<RefCell<AppState>>) {
             let button = st.grid_buttons[idx].clone();
             clear_flip_classes(&button);
             button.remove_css_class("matched");
+            button.remove_css_class("matched-dim");
             button.remove_css_class("active");
             button.remove_css_class("mismatch-shake");
             button.remove_css_class("match-bump");
             if idx < st.tiles.len() {
                 match st.tiles[idx].status {
-                    TileStatus::Matched => button.add_css_class("matched"),
+                    TileStatus::Matched => {
+                        button.add_css_class("matched");
+                        button.add_css_class("matched-dim");
+                    }
                     TileStatus::Flipped => button.add_css_class("active"),
                     TileStatus::Hidden => {}
                 }
@@ -429,6 +907,7 @@ fn handle_tile_click_result(state: &Rc<RefCell<AppState>>, game_id: u64, indices
         st.tiles[idx].status = TileStatus::Matched;
         clear_flip_classes(&st.grid_buttons[idx]);
         st.grid_buttons[idx].remove_css_class("active");
+        st.grid_buttons[idx].remove_css_class("matched-dim");
         st.grid_buttons[idx].add_css_class("matched");
         redraw_button_child(&st.grid_buttons[idx]);
     }
@@ -436,8 +915,10 @@ fn handle_tile_click_result(state: &Rc<RefCell<AppState>>, game_id: u64, indices
     st.lock_input = false;
 
     if st.tiles.iter().all(|t| t.status == TileStatus::Matched) {
+        drop(st);
+        clear_keyboard_focus(state);
+        let mut st = state.borrow_mut();
         if is_infinite_mode {
-            register_infinite_round_result(&mut st);
             save_current_run_and_refresh(&st);
         } else {
             register_non_infinite_result(&mut st);
@@ -447,10 +928,13 @@ fn handle_tile_click_result(state: &Rc<RefCell<AppState>>, game_id: u64, indices
         let cascade_start_delay_ms = victory_cascade_start_delay_ms(&st);
         stop_timer(&mut st);
         drop(st);
+        schedule_match_bump(state, indices.clone(), game_id, true);
+        let final_match_delay_ms =
+            MATCH_BUMP_DELAY_MS + MATCH_BUMP_DURATION_MS + FINAL_MATCH_DIM_SETTLE_MS;
         if is_infinite_mode {
             let state_next = state.clone();
             glib::timeout_add_local(
-                std::time::Duration::from_millis(INFINITE_PRE_TRANSITION_WAIT_MS),
+                std::time::Duration::from_millis(final_match_delay_ms + INFINITE_PRE_TRANSITION_WAIT_MS),
                 move || {
                     infinite_flow::schedule_infinite_round_transition(&state_next, game_id);
                     glib::ControlFlow::Break
@@ -459,7 +943,7 @@ fn handle_tile_click_result(state: &Rc<RefCell<AppState>>, game_id: u64, indices
         } else {
             let state_victory = state.clone();
             glib::timeout_add_local(
-                std::time::Duration::from_millis(cascade_start_delay_ms),
+                std::time::Duration::from_millis(final_match_delay_ms + cascade_start_delay_ms),
                 move || {
                     schedule_win_cascade_and_continue(&state_victory, game_id);
                     glib::ControlFlow::Break
@@ -467,7 +951,7 @@ fn handle_tile_click_result(state: &Rc<RefCell<AppState>>, game_id: u64, indices
             );
         }
     } else {
-        schedule_match_bump(state, indices.clone(), game_id);
+        schedule_match_bump(state, indices.clone(), game_id, false);
     }
 }
 
@@ -706,7 +1190,12 @@ fn schedule_mismatch_reset(
     );
 }
 
-fn schedule_match_bump(state: &Rc<RefCell<AppState>>, indices: Vec<usize>, game_id: u64) {
+fn schedule_match_bump(
+    state: &Rc<RefCell<AppState>>,
+    indices: Vec<usize>,
+    game_id: u64,
+    allow_dim_on_complete: bool,
+) {
     let state_bump_start = state.clone();
     let indices_start = indices.clone();
     glib::timeout_add_local(
@@ -718,6 +1207,7 @@ fn schedule_match_bump(state: &Rc<RefCell<AppState>>, indices: Vec<usize>, game_
             }
             for &idx in &indices_start {
                 if let Some(button) = st.grid_buttons.get(idx) {
+                    button.remove_css_class("matched-dim");
                     button.remove_css_class("match-bump");
                     button.add_css_class("match-bump");
                 }
@@ -732,9 +1222,13 @@ fn schedule_match_bump(state: &Rc<RefCell<AppState>>, indices: Vec<usize>, game_
                     if st.game_id != game_id {
                         return glib::ControlFlow::Break;
                     }
+                    let victory_started = st.tiles.iter().all(|tile| tile.status == TileStatus::Matched);
                     for &idx in &indices_end {
                         if let Some(button) = st.grid_buttons.get(idx) {
                             button.remove_css_class("match-bump");
+                            if !victory_started || allow_dim_on_complete {
+                                button.add_css_class("matched-dim");
+                            }
                         }
                     }
                     glib::ControlFlow::Break
@@ -753,8 +1247,49 @@ fn schedule_win_cascade_and_continue(state: &Rc<RefCell<AppState>>, game_id: u64
         if let Some(container) = &st.board_container {
             container.add_css_class("no-hover");
         }
+        for button in &st.grid_buttons {
+            button.remove_css_class("matched-dim");
+            button.remove_css_class("match-bump");
+        }
         (st.grid_buttons.len(), cascade_profile_for(&st))
     };
+    clear_keyboard_focus(state);
+    let color_restore_ms = 220;
+    let pre_cascade_bump_ms = color_restore_ms + MATCH_BUMP_DURATION_MS;
+
+    let state_bump_start = state.clone();
+    glib::timeout_add_local(std::time::Duration::from_millis(color_restore_ms), move || {
+        let st = state_bump_start.borrow();
+        let is_in_game = st.view_stack.as_ref()
+            .and_then(|s| s.visible_child_name())
+            .as_deref() == Some("game");
+
+        if st.game_id != game_id || !is_in_game {
+            return glib::ControlFlow::Break;
+        }
+        for button in &st.grid_buttons {
+            button.remove_css_class("match-bump");
+            button.add_css_class("match-bump");
+        }
+        glib::ControlFlow::Break
+    });
+
+    let state_bump_end = state.clone();
+    glib::timeout_add_local(std::time::Duration::from_millis(pre_cascade_bump_ms), move || {
+        let st = state_bump_end.borrow();
+        let is_in_game = st.view_stack.as_ref()
+            .and_then(|s| s.visible_child_name())
+            .as_deref() == Some("game");
+
+        if st.game_id != game_id || !is_in_game {
+            return glib::ControlFlow::Break;
+        }
+        for button in &st.grid_buttons {
+            button.remove_css_class("match-bump");
+        }
+        glib::ControlFlow::Break
+    });
+
     let (cascade_step_ms, post_cascade_pause_ms) = balanced_cascade_timings(total_cards, profile);
     let waves = build_cascade_waves(total_cards, profile.dual_corner_wave);
 
@@ -762,7 +1297,7 @@ fn schedule_win_cascade_and_continue(state: &Rc<RefCell<AppState>>, game_id: u64
         let wave_indices_hide = wave_indices.clone();
         let state_step = state.clone();
         glib::timeout_add_local(
-            std::time::Duration::from_millis(wave_idx as u64 * cascade_step_ms),
+            std::time::Duration::from_millis(pre_cascade_bump_ms + wave_idx as u64 * cascade_step_ms),
             move || {
                 let st = state_step.borrow_mut();
                 let is_in_game = st.view_stack.as_ref()
@@ -775,6 +1310,7 @@ fn schedule_win_cascade_and_continue(state: &Rc<RefCell<AppState>>, game_id: u64
                 for &idx in &wave_indices_hide {
                     if idx < st.grid_buttons.len() {
                         st.grid_buttons[idx].remove_css_class("matched");
+                        st.grid_buttons[idx].remove_css_class("matched-dim");
                         st.grid_buttons[idx].remove_css_class("active");
                     }
                     if let Some(button) = st.grid_buttons.get(idx) {
@@ -791,7 +1327,9 @@ fn schedule_win_cascade_and_continue(state: &Rc<RefCell<AppState>>, game_id: u64
         let wave_indices_show = wave_indices.clone();
         let state_step_back = state.clone();
         glib::timeout_add_local(
-            std::time::Duration::from_millis(wave_idx as u64 * cascade_step_ms + FLIP_PHASE_MS),
+            std::time::Duration::from_millis(
+                pre_cascade_bump_ms + wave_idx as u64 * cascade_step_ms + FLIP_PHASE_MS
+            ),
             move || {
                 let mut st = state_step_back.borrow_mut();
                 let is_in_game = st.view_stack.as_ref()
@@ -807,6 +1345,7 @@ fn schedule_win_cascade_and_continue(state: &Rc<RefCell<AppState>>, game_id: u64
                     }
                     if idx < st.grid_buttons.len() {
                         st.grid_buttons[idx].remove_css_class("matched");
+                        st.grid_buttons[idx].remove_css_class("matched-dim");
                         st.grid_buttons[idx].remove_css_class("active");
                         play_flip_show(&mut st, idx);
                     }
@@ -818,7 +1357,12 @@ fn schedule_win_cascade_and_continue(state: &Rc<RefCell<AppState>>, game_id: u64
 
     let wave_count = waves.len();
     let cascade_span_ms = wave_count.saturating_sub(1) as u64 * cascade_step_ms;
-    let total_delay = cascade_span_ms + FLIP_PHASE_MS * 2 + post_cascade_pause_ms;
+    let total_delay = pre_cascade_bump_ms
+        + cascade_span_ms
+        + FLIP_PHASE_MS
+        + VICTORY_FLIP_SHOW_DURATION_MS
+        + post_cascade_pause_ms
+        + VICTORY_CASCADE_END_BUFFER_MS;
     let state_end = state.clone();
     glib::timeout_add_local(std::time::Duration::from_millis(total_delay), move || {
         let mut st = state_end.borrow_mut();
@@ -849,6 +1393,12 @@ pub fn run() {
     let app = adw::Application::builder()
         .application_id("io.github.basshift.Recall")
         .build();
+    app.set_accels_for_action("win.show-help-overlay", &["<Primary>slash"]);
+    app.set_accels_for_action("app.instructions", &["F1"]);
+    app.set_accels_for_action("app.back-menu", &["<Primary>m"]);
+    app.set_accels_for_action("app.game-action", &["<Primary>r"]);
+    app.set_accels_for_action("app.preferences", &["<Primary>comma"]);
+    app.set_accels_for_action("app.quit", &["<Primary>q"]);
 
     app.connect_activate(move |app| {
         load_css();
@@ -863,12 +1413,31 @@ pub fn run() {
                 let pause_state = pause_game_for_overlay(&state);
                 let dialog = show_instructions_dialog(&app);
                 let state_resume = state.clone();
-                dialog.connect_response(None, move |_, _| {
+                dialog.connect_closed(move |_| {
                     resume_game_after_overlay(&state_resume, pause_state);
                 });
             }
         });
         app.add_action(&instructions_action);
+
+        let back_menu_action = SimpleAction::new("back-menu", None);
+        back_menu_action.connect_activate({
+            let state = state.clone();
+            move |_, _| {
+                show_menu(&state);
+            }
+        });
+        app.add_action(&back_menu_action);
+
+        let game_action = SimpleAction::new("game-action", None);
+        game_action.connect_activate({
+            let app = app.clone();
+            let state = state.clone();
+            move |_, _| {
+                trigger_contextual_game_action(&state, &app);
+            }
+        });
+        app.add_action(&game_action);
 
         let about_action = SimpleAction::new("about", None);
         about_action.connect_activate({
@@ -899,6 +1468,21 @@ pub fn run() {
             }
         });
         app.add_action(&score_action);
+
+        let preferences_action = SimpleAction::new("preferences", None);
+        preferences_action.connect_activate({
+            let app = app.clone();
+            let state = state.clone();
+            move |_, _| {
+                let pause_state = pause_game_for_overlay(&state);
+                let dialog = show_preferences_dialog(&state, &app);
+                let state_resume = state.clone();
+                dialog.connect_closed(move |_| {
+                    resume_game_after_overlay(&state_resume, pause_state);
+                });
+            }
+        });
+        app.add_action(&preferences_action);
 
         let quit_action = SimpleAction::new("quit", None);
         quit_action.connect_activate({
@@ -947,7 +1531,7 @@ pub fn run() {
             let title_victory_main = gtk::Label::new(Some("Recall"));
             title_victory_main.add_css_class("game-title-main");
         
-            let title_victory_sub = gtk::Label::new(Some("Victory"));
+            let title_victory_sub = gtk::Label::new(Some(&tr("Victory")));
             title_victory_sub.add_css_class("game-title-subtitle");
             title_victory_sub.add_css_class("caption");
         
@@ -960,9 +1544,9 @@ pub fn run() {
         header.add_css_class("flat");
 
         let back_button = gtk::Button::builder()
-            .icon_name("go-previous-symbolic")
+            .icon_name("go-home-symbolic")
             .build();
-        back_button.set_tooltip_text(Some("Back"));
+        back_button.set_tooltip_text(Some(&tr("Home")));
         back_button.connect_clicked({
             let state = state.clone();
             move |_| {
@@ -971,30 +1555,29 @@ pub fn run() {
         });
         header.pack_start(&back_button);
 
-        let menu_model = gio::Menu::new();
-        menu_model.append(Some("Score"), Some("app.score"));
-        menu_model.append(Some("Instructions"), Some("app.instructions"));
-        menu_model.append(Some("About Recall"), Some("app.about"));
-        menu_model.append(Some("Quit"), Some("app.quit"));
+        let header_timer_label = gtk::Label::builder()
+            .label("00:00")
+            .halign(gtk::Align::Start)
+            .valign(gtk::Align::Center)
+            .css_classes(vec!["game-header-timer", "dim-label"])
+            .build();
+        header_timer_label.set_visible(false);
+        header.pack_start(&header_timer_label);
+
         let menu_button = gtk::MenuButton::builder()
             .icon_name("open-menu-symbolic")
-            .menu_model(&menu_model)
             .build();
-
-        let restart_button = gtk::Button::builder()
-            .icon_name("view-refresh-symbolic")
-            .build();
-        restart_button.set_tooltip_text(Some("New Game"));
+        let restart_button = gtk::Button::builder().has_frame(false).build();
+        restart_button.add_css_class("flat");
         restart_button.connect_clicked({
+            let app = app.clone();
             let state = state.clone();
             move |_| {
-                restart_game(&state);
+                trigger_contextual_game_action(&state, &app);
             }
         });
-        let end_box = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-        end_box.append(&restart_button);
-        end_box.append(&menu_button);
-        header.pack_end(&end_box);
+        header.pack_end(&menu_button);
+        header.pack_end(&restart_button);
 
         let view_stack = gtk::Stack::new();
         view_stack.set_hexpand(true);
@@ -1004,6 +1587,11 @@ pub fn run() {
         view_stack.set_interpolate_size(false);
         view_stack.set_transition_type(gtk::StackTransitionType::SlideLeft);
         view_stack.set_transition_duration(300);
+
+        {
+            let mut st = state.borrow_mut();
+            st.dynamic_css_provider = Some(dynamic_css_provider.clone());
+        }
 
         let game_view = build_game_view(&state);
         view_stack.add_named(&game_view, Some("game"));
@@ -1024,13 +1612,38 @@ pub fn run() {
         let win = adw::ApplicationWindow::builder()
             .application(app)
             .title("Recall")
-            .icon_name("io.github.basshift.recall")
+            .icon_name("io.github.basshift.Recall")
             .default_width(860)
             .default_height(680)
             .content(&toolbar)
             .build();
+        let shortcuts_overlay = create_keyboard_shortcuts_overlay();
+        shortcuts_overlay.set_transient_for(Some(&win));
+        let overlay_pause_state = Rc::new(RefCell::new(OverlayPauseState::default()));
+        shortcuts_overlay.connect_show({
+            let state = state.clone();
+            let overlay_pause_state = overlay_pause_state.clone();
+            move |_| {
+                *overlay_pause_state.borrow_mut() = pause_game_for_overlay(&state);
+            }
+        });
+        shortcuts_overlay.connect_hide({
+            let state = state.clone();
+            let overlay_pause_state = overlay_pause_state.clone();
+            move |_| {
+                let pause_state = *overlay_pause_state.borrow();
+                resume_game_after_overlay(&state, pause_state);
+                *overlay_pause_state.borrow_mut() = OverlayPauseState::default();
+            }
+        });
+        win.set_help_overlay(Some(&shortcuts_overlay));
         win.set_size_request(360, 560);
         win.add_css_class("app-window");
+        sync_window_maximized_class(&win);
+        win.connect_notify_local(Some("maximized"), {
+            let win = win.clone();
+            move |_, _| sync_window_maximized_class(&win)
+        });
 
         let style_manager = adw::StyleManager::default();
         if style_manager.is_dark() {
@@ -1061,11 +1674,24 @@ pub fn run() {
             st.title_menu = Some(title_menu);
             st.title_game = Some(title_game_box.upcast::<gtk::Widget>());
             st.title_game_subtitle = Some(title_game_subtitle);
+            st.header_timer_label = Some(header_timer_label);
             st.title_victory = Some(title_victory_box.upcast::<gtk::Widget>());
             st.dynamic_css_provider = Some(dynamic_css_provider);
             st.records = load_records();
             refresh_continue_button_state(&st);
         }
+
+        let last_window_size = Rc::new(Cell::new((0, 0)));
+        let state_layout = state.clone();
+        let last_window_size_tick = last_window_size.clone();
+        win.add_tick_callback(move |window, _| {
+            let size = (window.allocated_width(), window.allocated_height());
+            if size.0 > 0 && size.1 > 0 && size != last_window_size_tick.get() {
+                last_window_size_tick.set(size);
+                sync_window_layout_classes(window, &state_layout);
+            }
+            glib::ControlFlow::Continue
+        });
 
         let global_key = gtk::EventControllerKey::new();
         global_key.set_propagation_phase(gtk::PropagationPhase::Capture);
@@ -1075,14 +1701,41 @@ pub fn run() {
                 if debug_tools::handle_debug_shortcut(&state, key, mods) {
                     return gtk::glib::Propagation::Stop;
                 }
+                let has_primary_modifier = mods.intersects(
+                    gdk::ModifierType::CONTROL_MASK
+                        | gdk::ModifierType::ALT_MASK
+                        | gdk::ModifierType::SUPER_MASK,
+                );
+                if !has_primary_modifier {
+                    let handled = match key {
+                        gdk::Key::Up | gdk::Key::KP_Up => {
+                            suppress_board_hover_for_keyboard(&state);
+                            move_board_focus(&state, 0, -1)
+                        }
+                        gdk::Key::Down | gdk::Key::KP_Down => {
+                            suppress_board_hover_for_keyboard(&state);
+                            move_board_focus(&state, 0, 1)
+                        }
+                        gdk::Key::Left | gdk::Key::KP_Left => {
+                            suppress_board_hover_for_keyboard(&state);
+                            move_board_focus(&state, -1, 0)
+                        }
+                        gdk::Key::Right | gdk::Key::KP_Right => {
+                            suppress_board_hover_for_keyboard(&state);
+                            move_board_focus(&state, 1, 0)
+                        }
+                        gdk::Key::space | gdk::Key::Return | gdk::Key::KP_Enter => {
+                            activate_focused_tile(&state)
+                        }
+                        _ => false,
+                    };
+                    if handled {
+                        return gtk::glib::Propagation::Stop;
+                    }
+                }
                 if key == gdk::Key::Escape {
                     let st = state.borrow();
-                    let in_game = st
-                        .view_stack
-                        .as_ref()
-                        .and_then(|stack| stack.visible_child_name())
-                        .as_deref()
-                        == Some("game");
+                    let in_game = is_game_view_active(&st);
                     // Allow escape if input is unlocked OR if we are just in the preview phase (so user can quit early)
                     if in_game && (!st.lock_input || st.preview_active) {
                         drop(st);
@@ -1115,6 +1768,7 @@ pub fn run() {
 
 fn load_css() {
     static RESOURCES_INIT: Once = Once::new();
+    static CSS_PROVIDERS_INIT: Once = Once::new();
     RESOURCES_INIT.call_once(|| {
         gio::resources_register_include!("recall.gresource")
             .expect("failed to register embedded resources");
@@ -1124,24 +1778,27 @@ fn load_css() {
         return;
     };
 
-    let icon_theme = gtk::IconTheme::for_display(&display);
-    icon_theme.add_resource_path("/io/github/basshift/Recall/icons/hicolor");
+    CSS_PROVIDERS_INIT.call_once(|| {
+        let icon_theme = gtk::IconTheme::for_display(&display);
+        icon_theme.add_resource_path("/io/github/basshift/Recall/icons/hicolor");
+        icon_theme.add_resource_path("/io/github/basshift/Recall/icons");
 
-    for resource_path in [
-        "/io/github/basshift/Recall/style.vars.css",
-        "/io/github/basshift/Recall/style.css",
-        "/io/github/basshift/Recall/style.light.css",
-        "/io/github/basshift/Recall/style.dark.css",
-        "/io/github/basshift/Recall/style.mobile.css",
-    ] {
-        let provider = gtk::CssProvider::new();
-        provider.load_from_resource(resource_path);
-        gtk::style_context_add_provider_for_display(
-            &display,
-            &provider,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-        );
-    }
+        for resource_path in [
+            "/io/github/basshift/Recall/style.vars.css",
+            "/io/github/basshift/Recall/style.css",
+            "/io/github/basshift/Recall/style.light.css",
+            "/io/github/basshift/Recall/style.dark.css",
+            "/io/github/basshift/Recall/style.mobile.css",
+        ] {
+            let provider = gtk::CssProvider::new();
+            provider.load_from_resource(resource_path);
+            gtk::style_context_add_provider_for_display(
+                &display,
+                &provider,
+                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
+        }
+    });
 }
 
 fn build_menu_view(state: &Rc<RefCell<AppState>>, app: &adw::Application) -> gtk::Box {
@@ -1159,21 +1816,25 @@ fn build_menu_view(state: &Rc<RefCell<AppState>>, app: &adw::Application) -> gtk
     content.set_valign(gtk::Align::Center);
     content.add_css_class("main-menu-content");
 
-    let icon = gtk::Image::from_icon_name("io.github.basshift.recall");
-    icon.set_pixel_size(192);
+    let icon = gtk::Image::from_icon_name("io.github.basshift.Recall");
+    icon.set_pixel_size(168);
     icon.add_css_class("main-menu-icon");
 
-    let title = gtk::Label::new(Some("Recall"));
+    let title = gtk::Label::new(Some(&tr("Recall")));
     title.add_css_class("main-menu-title");
     title.add_css_class("title-1");
 
     let buttons_box = gtk::Box::new(gtk::Orientation::Vertical, 13);
     buttons_box.set_halign(gtk::Align::Center);
+    buttons_box.add_css_class("main-menu-actions");
 
-    let continue_button = gtk::Button::with_label("Continue Game");
+    let continue_button = gtk::Button::new();
     continue_button.add_css_class("main-menu-button");
-    continue_button.set_size_request(164, 40);
-    continue_button.set_visible(session_save::has_saved_run());
+    continue_button.set_size_request(210, 40);
+    continue_button.set_halign(gtk::Align::Center);
+    let saved_run = session_save::load_saved_run();
+    set_continue_button_content(&continue_button, saved_run.as_ref());
+    continue_button.set_visible(saved_run.is_some());
     continue_button.connect_clicked({
         let state = state.clone();
         move |_| {
@@ -1181,9 +1842,14 @@ fn build_menu_view(state: &Rc<RefCell<AppState>>, app: &adw::Application) -> gtk
         }
     });
 
-    let new_button = gtk::Button::with_label("New Game");
-    new_button.add_css_class("main-menu-button");
-    new_button.set_size_request(164, 40);
+    let new_button = gtk::Button::new();
+    new_button.add_css_class("main-menu-button-primary");
+    new_button.add_css_class("suggested-action");
+    new_button.set_size_request(210, 40);
+    new_button.set_halign(gtk::Align::Center);
+    let new_button_label = gtk::Label::new(Some(&tr("New Game")));
+    new_button_label.add_css_class("main-menu-button-label");
+    new_button.set_child(Some(&new_button_label));
     new_button.connect_clicked({
         let state = state.clone();
         let app = app.clone();
@@ -1237,6 +1903,25 @@ fn build_game_view(state: &Rc<RefCell<AppState>>) -> gtk::Box {
     board_card.set_hexpand(true);
     board_card.set_vexpand(true);
     board_card.add_css_class("recall-card-container");
+    let board_hover_state = state.clone();
+    let board_motion = gtk::EventControllerMotion::new();
+    board_motion.connect_enter(move |_, _, _| {
+        let st = board_hover_state.borrow();
+        if !is_game_view_active(&st) || st.lock_input {
+            return;
+        }
+        if let Some(container) = &st.board_container {
+            container.remove_css_class("no-hover");
+        }
+    });
+    let board_leave_state = state.clone();
+    board_motion.connect_leave(move |_| {
+        let st = board_leave_state.borrow();
+        if let Some(container) = &st.board_container {
+            container.add_css_class("no-hover");
+        }
+    });
+    board_card.add_controller(board_motion);
 
     board_card.connect_closure(
         "notify::width",
@@ -1270,38 +1955,78 @@ fn build_game_view(state: &Rc<RefCell<AppState>>) -> gtk::Box {
     {
         let mut st = state.borrow_mut();
         st.board_container = Some(board_card.clone());
+        st.board_shell = Some(board_frame.clone());
     }
 
     root
 }
 
-pub(super) fn spawn_firework_burst(layer: &gtk::Fixed, x: f64, y: f64) {
-    for i in 0..8 {
-        let color_idx = i % 4;
-        let particle = gtk::Label::builder()
-            .label("●")
-            .css_classes(vec!["firework-particle", &format!("dir-{}", i), &format!("color-{}", color_idx)])
-            .build();
+fn spawn_victory_confetti_piece(layer: &gtk::Fixed, x: f64, y: f64) {
+    let color_idx = glib::random_int_range(0, 6);
+    let shape_symbol = match glib::random_int_range(0, 3) {
+        0 => "■",
+        1 => "◆",
+        _ => "●",
+    };
+    let shape_class = match glib::random_int_range(0, 3) {
+        0 => "shape-square",
+        1 => "shape-diamond",
+        _ => "shape-circle",
+    };
+    let drift_class = if glib::random_int_range(0, 2) == 0 {
+        "drift-left"
+    } else {
+        "drift-right"
+    };
+    let speed_class = match glib::random_int_range(0, 3) {
+        0 => "speed-a",
+        1 => "speed-b",
+        _ => "speed-c",
+    };
+    let particle = gtk::Label::builder()
+        .label(shape_symbol)
+        .css_classes(vec![
+            "victory-confetti-particle",
+            &format!("color-{}", color_idx),
+            shape_class,
+            drift_class,
+            speed_class,
+        ])
+        .build();
 
-        particle.set_can_target(false);
-        layer.put(&particle, x, y);
+    particle.set_can_target(false);
+    layer.put(&particle, x, y);
 
-        // Remove particle after animation ends
-        glib::timeout_add_local_once(std::time::Duration::from_millis(800), {
-            let layer_weak = layer.downgrade();
-            let particle_weak = particle.downgrade();
-            move || {
-                if let (Some(layer), Some(particle)) = (layer_weak.upgrade(), particle_weak.upgrade()) {
-                    layer.remove(&particle);
-                }
+    glib::timeout_add_local_once(std::time::Duration::from_millis(1800), {
+        let layer_weak = layer.downgrade();
+        let particle_weak = particle.downgrade();
+        move || {
+            if let (Some(layer), Some(particle)) = (layer_weak.upgrade(), particle_weak.upgrade()) {
+                layer.remove(&particle);
             }
-        });
+        }
+    });
+}
+
+fn random_confetti_spawn_x(layer: &gtk::Fixed) -> f64 {
+    let layer_width = layer.width().max(280) as f64;
+    let side_padding = 8.0;
+    let min_x = side_padding;
+    let max_x = (layer_width - side_padding - 12.0).max(min_x + 1.0);
+    glib::random_double_range(min_x, max_x)
+}
+
+fn remove_source_id_if_active(source_id: glib::SourceId) {
+    // Some timers may already be removed by GLib after returning Break.
+    // Removing a missing source with SourceId::remove() panics in this glib version.
+    unsafe {
+        let _ = glib::ffi::g_source_remove(source_id.as_raw());
     }
 }
 
 pub(super) fn stop_victory_sparks(st: &mut AppState) {
     if let Some(handle) = st.spark_timer_handle.take() {
-        handle.remove();
+        remove_source_id_if_active(handle);
     }
     if let Some(layer) = &st.victory_spark_layer {
         while let Some(child) = layer.first_child() {
@@ -1316,23 +2041,43 @@ pub(super) fn start_victory_sparks(state: &Rc<RefCell<AppState>>) {
 
     let layer = st.victory_spark_layer.clone();
     let state_weak = Rc::downgrade(state);
-    let mut current_spot = 0;
-
-    let handle = glib::timeout_add_local(std::time::Duration::from_millis(600), move || {
-        let Some(_state) = state_weak.upgrade() else {
+    let mut elapsed_ms = 0u32;
+    let handle = glib::timeout_add_local(std::time::Duration::from_millis(85), move || {
+        let Some(state) = state_weak.upgrade() else {
             return glib::ControlFlow::Break;
         };
-        if let Some(layer) = &layer {
-            // 3 specific "Great" locations: Top-Left, Top-Right, Center-Bottom
-            let (x, y) = match current_spot {
-                0 => (75.0, 96.0),   // Top-Left (slightly lower)
-                1 => (260.0, 74.0),  // Top-Right (slightly left)
-                _ => (180.0, 178.0), // Center-Bottom (slightly higher)
-            };
 
-            spawn_firework_burst(layer, x, y);
-            current_spot = (current_spot + 1) % 3;
+        let in_victory_view = {
+            let st = state.borrow();
+            st.view_stack
+                .as_ref()
+                .and_then(|stack| stack.visible_child_name())
+                .as_deref()
+                == Some("victory")
+        };
+        if !in_victory_view {
+            state.borrow_mut().spark_timer_handle = None;
+            return glib::ControlFlow::Break;
         }
+
+        elapsed_ms = elapsed_ms.saturating_add(85);
+        if elapsed_ms >= 3500 {
+            state.borrow_mut().spark_timer_handle = None;
+            return glib::ControlFlow::Break;
+        }
+
+        if let Some(layer) = &layer {
+            let spawn_count = glib::random_int_range(1, 4);
+            for _ in 0..spawn_count {
+                let x = random_confetti_spawn_x(layer);
+                let y = glib::random_double_range(-24.0, -5.0);
+                spawn_victory_confetti_piece(layer, x, y);
+            }
+        } else {
+            state.borrow_mut().spark_timer_handle = None;
+            return glib::ControlFlow::Break;
+        }
+
         glib::ControlFlow::Continue
     });
 
@@ -1383,7 +2128,7 @@ fn build_victory_view(state: &Rc<RefCell<AppState>>) -> gtk::Box {
     rank_art.set_pixel_size(160);
     rank_art.set_halign(gtk::Align::Center);
 
-    let title = gtk::Label::new(Some("Well done!"));
+    let title = gtk::Label::new(Some(&tr("Well done!")));
     title.add_css_class("victory-title");
     title.add_css_class("title-1");
 
@@ -1405,9 +2150,9 @@ fn build_victory_view(state: &Rc<RefCell<AppState>>) -> gtk::Box {
     buttons.set_halign(gtk::Align::Center);
     buttons.set_margin_top(6);
 
-    let again_btn = gtk::Button::with_label("Play Again");
+    let again_btn = gtk::Button::with_label(&tr("Play Again"));
     again_btn.add_css_class("suggested-action");
-    let menu_btn = gtk::Button::with_label("Main Menu");
+    let menu_btn = gtk::Button::with_label(&tr("Main Menu"));
 
     again_btn.connect_clicked({
         let state = state.clone();
@@ -1442,6 +2187,7 @@ fn build_victory_view(state: &Rc<RefCell<AppState>>) -> gtk::Box {
         st.victory_message_label = Some(message.clone());
         st.victory_stats_label = Some(stats.clone());
         st.victory_rank_art = Some(rank_art.clone());
+        st.victory_art_resource = None;
         st.victory_spark_layer = Some(spark_layer.clone());
     }
 
@@ -1461,8 +2207,8 @@ pub fn handle_tile_click(state: &Rc<RefCell<AppState>>, index: usize) {
 
     // Flip the tile
     st.tiles[index].status = TileStatus::Flipped;
-    play_flip_show(&mut st, index);
     st.grid_buttons[index].add_css_class("active");
+    play_flip_show(&mut st, index);
     st.flipped_indices.push(index);
     if !st.active_session_started {
         st.active_session_started = true;
@@ -1478,10 +2224,10 @@ pub fn handle_tile_click(state: &Rc<RefCell<AppState>>, index: usize) {
             FlipOutcome::Mismatch => {
                 st.run_mismatches = st.run_mismatches.saturating_add(1);
                 let first_pick_index = indices.first().copied().unwrap_or(index);
-                let (mismatch_pause_ms, penalty_plan) = if st.difficulty == Difficulty::Tri {
+                let (mismatch_pause_ms, penalty_plan) = if st.difficulty == Difficulty::Trio {
                 (
-                    tri_penalties::mismatch_pause_ms(st.tri_level),
-                    tri_penalties::register_mismatch_and_plan_reshuffle(&mut st, first_pick_index),
+                    trio_penalties::mismatch_pause_ms(st.trio_level),
+                    trio_penalties::register_mismatch_and_plan_reshuffle(&mut st, first_pick_index),
                 )
             } else {
                 let penalty_difficulty = if infinite::is_infinite(st.difficulty) {
@@ -1501,6 +2247,8 @@ pub fn handle_tile_click(state: &Rc<RefCell<AppState>>, index: usize) {
             st.lock_input = true;
             let state_after_flip = state.clone();
             let indices_after_flip = indices.clone();
+            drop(st);
+            clear_keyboard_focus(state);
             glib::timeout_add_local(std::time::Duration::from_millis(FLIP_PHASE_MS), move || {
                 let st = state_after_flip.borrow_mut();
                 if st.game_id != game_id {
@@ -1523,12 +2271,13 @@ pub fn handle_tile_click(state: &Rc<RefCell<AppState>>, index: usize) {
                 );
                 glib::ControlFlow::Break
             });
+            let mut st = state.borrow_mut();
             mark_run_dirty(&mut st);
         }
         FlipOutcome::CompleteMatch => {
             st.run_matches = st.run_matches.saturating_add(1);
-            if st.difficulty == Difficulty::Tri {
-                tri_penalties::reset_penalty_after_match(&mut st);
+            if st.difficulty == Difficulty::Trio {
+                trio_penalties::reset_penalty_after_match(&mut st);
             } else {
                 let penalty_difficulty = if infinite::is_infinite(st.difficulty) {
                     infinite::classic_difficulty_for_round(st.infinite_round)
@@ -1540,6 +2289,7 @@ pub fn handle_tile_click(state: &Rc<RefCell<AppState>>, index: usize) {
             st.lock_input = true;
             mark_run_dirty(&mut st);
             drop(st);
+            clear_keyboard_focus(state);
             let state_after_flip = state.clone();
             glib::timeout_add_local(std::time::Duration::from_millis(FLIP_PHASE_MS), move || {
                 let st = state_after_flip.borrow();
@@ -1559,17 +2309,23 @@ pub fn handle_tile_click(state: &Rc<RefCell<AppState>>, index: usize) {
 
 fn preview_seconds_for(st: &AppState) -> f64 {
     match st.difficulty {
-        Difficulty::Easy => 3.0,
-        Difficulty::Medium => 2.0,
-        Difficulty::Hard => 1.2,
+        Difficulty::Easy => 4.0,
+        Difficulty::Medium => 7.0,
+        Difficulty::Hard => 10.0,
         Difficulty::Impossible => classic_penalties::PREVIEW_SECONDS,
-        Difficulty::Tri => match st.tri_level {
-            1 => 3.6,
-            2 => 2.6,
-            3 => 1.8,
-            _ => 1.4,
+        Difficulty::Trio => match st.trio_level {
+            1 => 9.0,
+            2 => 11.0,
+            3 => 14.0,
+            _ => 15.0,
         },
-        Difficulty::RecallMode => (2.5 - (st.infinite_round.saturating_sub(1) as f64 * 0.15)).max(0.7),
+        Difficulty::Infinite => match infinite::classic_difficulty_for_round(st.infinite_round) {
+            Difficulty::Easy => 4.0,
+            Difficulty::Medium => 7.0,
+            Difficulty::Hard => 10.0,
+            Difficulty::Impossible => classic_penalties::PREVIEW_SECONDS,
+            _ => 4.0,
+        },
     }
 }
 
@@ -1620,7 +2376,7 @@ pub(super) fn show_game_with_reveal_delay(state: &Rc<RefCell<AppState>>, reveal_
     {
         let mut st = state.borrow_mut();
         if let Some(container) = &st.board_container {
-            container.remove_css_class("no-hover");
+            container.add_css_class("no-hover");
             container.remove_css_class("victory-pending");
             container.remove_css_class("infinite-level-swap-out");
             container.remove_css_class("infinite-level-swap-in");
@@ -1637,6 +2393,7 @@ pub(super) fn show_game_with_reveal_delay(state: &Rc<RefCell<AppState>>, reveal_
             }
             let button = &st.grid_buttons[i];
             button.remove_css_class("matched");
+            button.remove_css_class("matched-dim");
             button.remove_css_class("active");
             button.remove_css_class("match-bump");
             button.remove_css_class("mismatch-shake");
@@ -1646,6 +2403,7 @@ pub(super) fn show_game_with_reveal_delay(state: &Rc<RefCell<AppState>>, reveal_
             }
         }
     }
+    clear_keyboard_focus(state);
 
     // Reveal all cards together after a short beat.
     let state_reveal = state.clone();
@@ -1741,8 +2499,9 @@ pub(super) fn show_game(state: &Rc<RefCell<AppState>>) {
 fn restart_game(state: &Rc<RefCell<AppState>>) {
     {
         let mut st = state.borrow_mut();
+        finalize_infinite_run_if_needed(&mut st);
         if infinite::is_infinite(st.difficulty) {
-            st.reset_infinite_round();
+            infinite::prepare_start(&mut st);
         }
         if classic_penalties::is_expert(st.difficulty) {
             st.impossible_mismatch_count = 0;
@@ -1758,8 +2517,12 @@ pub(super) fn apply_difficulty_change(state: &Rc<RefCell<AppState>>, difficulty:
         let mut st = state.borrow_mut();
         if st.pending_new_game_selection {
             st.pending_new_game_selection = false;
+            finalize_infinite_run_if_needed(&mut st);
             st.active_session_started = false;
             clear_saved_run_and_refresh(&mut st);
+        }
+        if st.difficulty != difficulty {
+            finalize_infinite_run_if_needed(&mut st);
         }
         st.active_session_started = false;
         if st.difficulty == difficulty {
@@ -1788,14 +2551,14 @@ pub(super) fn apply_difficulty_change(state: &Rc<RefCell<AppState>>, difficulty:
     show_game(state);
 }
 
-pub(super) fn apply_tri_level_change(state: &Rc<RefCell<AppState>>, level: u8) {
+pub(super) fn apply_trio_level_change(state: &Rc<RefCell<AppState>>, level: u8) {
     let should_refresh = {
         let mut st = state.borrow_mut();
-        if st.tri_level == level.clamp(1, 4) {
+        if st.trio_level == level.clamp(1, 4) {
             false
         } else {
-            st.set_tri_level(level);
-            st.difficulty == Difficulty::Tri
+            st.set_trio_level(level);
+            st.difficulty == Difficulty::Trio
         }
     };
 

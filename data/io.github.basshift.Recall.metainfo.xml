@@ -2,13 +2,17 @@
 <component type="desktop-application">
   <id>io.github.basshift.Recall</id>
   <name>Recall</name>
-  <summary>A beautiful and relaxing memory game</summary>
+  <summary>Train memory under pressure</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
+  <branding>
+    <color type="primary" scheme_preference="light">#E0D0AB</color>
+    <color type="primary" scheme_preference="dark">#724812</color>
+  </branding>
   <description>
     <p>
-      Recall is a memory game designed to be beautiful, modern, and relaxing.
-      With different modes and difficulties, it's perfect for training your brain.
+      Recall is a memory game built with Rust, GTK4, and libadwaita that starts calm and grows into a sharp challenge.
+      Classic, Trio, and Infinite modes begin readable and become more demanding at higher difficulties.
     </p>
   </description>
   <launchable type="desktop-id">io.github.basshift.Recall.desktop</launchable>
@@ -17,20 +21,43 @@
   <url type="vcs-browser">https://github.com/basshift/Recall</url>
   <screenshots>
     <screenshot type="default">
-      <caption>Main menu</caption>
-      <image>https://raw.githubusercontent.com/basshift/Recall/main/data/screenshots/recall-main-menu.png</image>
+      <caption>Build groups of three in Trio mode</caption>
+      <image>https://raw.githubusercontent.com/basshift/Recall/main/data/screenshots/recall-trio-gameplay.png</image>
     </screenshot>
     <screenshot>
-      <caption>Classic Easy gameplay</caption>
-      <image>https://raw.githubusercontent.com/basshift/Recall/main/data/screenshots/recall-easy-gameplay.png</image>
+      <caption>Match pairs in Classic mode</caption>
+      <image>https://raw.githubusercontent.com/basshift/Recall/main/data/screenshots/recall-classic-gameplay.png</image>
     </screenshot>
     <screenshot>
-      <caption>Victory flow (Harmony rank)</caption>
+      <caption>Learn the rules with the in-app guide</caption>
+      <image>https://raw.githubusercontent.com/basshift/Recall/main/data/screenshots/recall-how-to-play.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Celebrate a flawless Harmony S victory</caption>
       <image>https://raw.githubusercontent.com/basshift/Recall/main/data/screenshots/recall-victory-harmony-s.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Start a new run from the main menu</caption>
+      <image>https://raw.githubusercontent.com/basshift/Recall/main/data/screenshots/recall-main-menu.png</image>
     </screenshot>
   </screenshots>
   <releases>
-    <release version="0.1.0" date="2026-02-18" />
+    <release version="1.0.0" date="2026-03-12">
+      <description>
+        <p>
+          Recall 1.0.0 refines the game feel, improves the GNOME-native interface, and hardens local data handling for a more polished release.
+        </p>
+        <ul>
+          <li>Added a proper preferences flow and an in-app how-to experience with dedicated slides</li>
+          <li>Refined the local score dialog with a more native libadwaita layout and better empty states</li>
+          <li>Polished board feedback, match dimming, and victory transitions for smoother visual flow</li>
+          <li>Rebalanced previews and penalties, especially in Trio and higher difficulties</li>
+          <li>Improved the onboarding flow with clearer progression across modes and difficulty cues</li>
+          <li>Hardened local records and continue-run data loading against corrupted or partial files</li>
+          <li>Expanded UI copy coverage and cleaned up remaining i18n and runtime presentation issues</li>
+        </ul>
+      </description>
+    </release>
   </releases>
   <provides>
     <binary>recall</binary>
