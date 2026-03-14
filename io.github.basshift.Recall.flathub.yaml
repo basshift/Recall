@@ -30,4 +30,4 @@ modules:
     sources:
       - type: git
         url: https://github.com/basshift/Recall.git
-        commit: 1a558d29ea46c50392ca9519a402593f75f5bef1
+        commit: 6bd916dffa765e4be8bd8ea6fccc597d0fa14a29
