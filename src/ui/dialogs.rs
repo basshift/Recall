@@ -373,7 +373,7 @@ pub fn create_keyboard_shortcuts_overlay() -> gtk::ShortcutsWindow {
     let general_title = xml_escape(&tr("General"));
     let move_cards = xml_escape(&tr("Move between cards"));
     let flip_card = xml_escape(&tr("Flip selected card"));
-    let game_action = xml_escape(&tr("Restart game or end run"));
+    let game_action = xml_escape(&tr("Restart game"));
     let back_to_menu = xml_escape(&tr("Back to menu"));
     let show_shortcuts = xml_escape(&tr("Show shortcuts"));
     let how_to_play = xml_escape(&tr("How to play"));

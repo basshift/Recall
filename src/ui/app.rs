@@ -1434,7 +1434,7 @@ pub fn run() {
             let app = app.clone();
             let state = state.clone();
             move |_, _| {
-                trigger_contextual_game_action(&state, &app);
+                maybe_restart_game(&state, &app);
             }
         });
         app.add_action(&game_action);
@@ -2157,7 +2157,7 @@ fn build_victory_view(state: &Rc<RefCell<AppState>>) -> gtk::Box {
     again_btn.connect_clicked({
         let state = state.clone();
         move |_| {
-            show_game(&state);
+            restart_game(&state);
         }
     });
     menu_btn.connect_clicked({
@@ -2499,7 +2499,12 @@ pub(super) fn show_game(state: &Rc<RefCell<AppState>>) {
 fn restart_game(state: &Rc<RefCell<AppState>>) {
     {
         let mut st = state.borrow_mut();
-        finalize_infinite_run_if_needed(&mut st);
+        stop_timer(&mut st);
+        stop_preview(&mut st);
+        stop_victory_sparks(&mut st);
+        st.game_id = st.game_id.wrapping_add(1);
+        st.lock_input = false;
+        st.flipped_indices.clear();
         if infinite::is_infinite(st.difficulty) {
             infinite::prepare_start(&mut st);
         }

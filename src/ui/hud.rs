@@ -37,12 +37,7 @@ fn refresh_header_menu_button(st: &AppState, include_game_action: bool) {
 
     let menu_model = Menu::new();
     if include_game_action {
-        let game_action_label = if infinite::is_infinite(st.difficulty) {
-            tr("End run")
-        } else {
-            tr("Restart game")
-        };
-        menu_model.append(Some(&game_action_label), Some("app.game-action"));
+        menu_model.append(Some(&tr("Restart game")), Some("app.game-action"));
     }
     menu_model.append(Some(&tr("Score")), Some("app.score"));
     menu_model.append(Some(&tr("Preferences")), Some("app.preferences"));

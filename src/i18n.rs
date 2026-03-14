@@ -1,5 +1,6 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
+use std::path::PathBuf;
 
 pub const GETTEXT_PACKAGE: &str = "io.github.basshift.Recall";
 const LC_ALL: c_int = 6;
@@ -14,8 +15,7 @@ unsafe extern "C" {
 
 pub fn init() {
     let domain = CString::new(GETTEXT_PACKAGE).expect("invalid gettext domain");
-    let locale_dir =
-        std::env::var("RECALL_LOCALEDIR").unwrap_or_else(|_| "/app/share/locale".to_string());
+    let locale_dir = std::env::var("RECALL_LOCALEDIR").unwrap_or_else(|_| default_locale_dir());
     let locale_dir = CString::new(locale_dir).expect("invalid locale dir");
     let utf8 = CString::new("UTF-8").expect("invalid codeset");
 
@@ -25,6 +25,16 @@ pub fn init() {
         bind_textdomain_codeset(domain.as_ptr(), utf8.as_ptr());
         textdomain(domain.as_ptr());
     }
+}
+
+fn default_locale_dir() -> String {
+    let flatpak_locale_dir = "/app/share/locale";
+    if std::path::Path::new(flatpak_locale_dir).exists() {
+        return flatpak_locale_dir.to_string();
+    }
+
+    let project_locale_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("po");
+    project_locale_dir.to_string_lossy().into_owned()
 }
 
 pub fn tr(message: &str) -> String {
