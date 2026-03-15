@@ -12,7 +12,7 @@ use gio::SimpleAction;
 
 use crate::i18n::tr;
 
-use super::board::CONTENT_MARGIN;
+use super::board::{build_board_grid, CONTENT_MARGIN};
 use super::dialogs::{create_keyboard_shortcuts_overlay, show_about_dialog, show_instructions_dialog};
 use super::hud::{
     set_header_game,
@@ -33,7 +33,7 @@ use super::records::{
     reset_local_records,
     show_memory_dialog,
 };
-use super::scene::{build_board_for_difficulty, rebuild_board, show_menu, show_victory};
+use super::scene::{rebuild_board, show_menu, show_victory};
 use super::session_save;
 use super::state::{AppState, Difficulty, Rank, TileStatus};
 use super::trio_penalties;
@@ -190,7 +190,15 @@ fn evaluate_flip_outcome(st: &AppState, indices: &[usize], latest_index: usize) 
     }
 
     if indices.len() == st.match_size {
-        FlipOutcome::CompleteMatch
+        let first_value = &st.tiles[indices[0]].value;
+        if indices
+            .iter()
+            .all(|&idx| st.tiles.get(idx).is_some_and(|tile| tile.value == *first_value))
+        {
+            FlipOutcome::CompleteMatch
+        } else {
+            FlipOutcome::Mismatch
+        }
     } else {
         FlipOutcome::Continue
     }
@@ -644,7 +652,9 @@ fn clear_saved_run_and_refresh(st: &mut AppState) {
 }
 
 fn save_current_run_and_refresh(st: &AppState) {
-    session_save::save_current_run(st);
+    if let Err(err) = session_save::save_current_run(st) {
+        eprintln!("warning: failed to save current run: {err}");
+    }
     refresh_continue_button_state(st);
 }
 
@@ -695,7 +705,7 @@ fn finish_infinite_run(state: &Rc<RefCell<AppState>>) {
         }
         stop_timer(&mut st);
         stop_preview(&mut st);
-        st.game_id = st.game_id.wrapping_add(1);
+        st.invalidate_callbacks();
         st.lock_input = false;
         st.flipped_indices.clear();
         register_infinite_run_result(&mut st);
@@ -1889,7 +1899,7 @@ fn build_game_view(state: &Rc<RefCell<AppState>>) -> gtk::Box {
     content.set_margin_start(CONTENT_MARGIN);
     content.set_margin_end(CONTENT_MARGIN);
 
-    let board_grid = build_board_for_difficulty(state);
+    let board_grid = build_board_grid(state);
 
     let board_frame = gtk::AspectFrame::new(0.5, 0.5, 1.0, false);
     board_frame.set_halign(gtk::Align::Fill);
@@ -2016,17 +2026,9 @@ fn random_confetti_spawn_x(layer: &gtk::Fixed) -> f64 {
     glib::random_double_range(min_x, max_x)
 }
 
-fn remove_source_id_if_active(source_id: glib::SourceId) {
-    // Some timers may already be removed by GLib after returning Break.
-    // Removing a missing source with SourceId::remove() panics in this glib version.
-    unsafe {
-        let _ = glib::ffi::g_source_remove(source_id.as_raw());
-    }
-}
-
 pub(super) fn stop_victory_sparks(st: &mut AppState) {
     if let Some(handle) = st.spark_timer_handle.take() {
-        remove_source_id_if_active(handle);
+        handle.remove();
     }
     if let Some(layer) = &st.victory_spark_layer {
         while let Some(child) = layer.first_child() {
@@ -2502,7 +2504,7 @@ fn restart_game(state: &Rc<RefCell<AppState>>) {
         stop_timer(&mut st);
         stop_preview(&mut st);
         stop_victory_sparks(&mut st);
-        st.game_id = st.game_id.wrapping_add(1);
+        st.invalidate_callbacks();
         st.lock_input = false;
         st.flipped_indices.clear();
         if infinite::is_infinite(st.difficulty) {
@@ -2570,5 +2572,40 @@ pub(super) fn apply_trio_level_change(state: &Rc<RefCell<AppState>>, level: u8) 
     if should_refresh {
         rebuild_board(state);
         show_game(state);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{evaluate_flip_outcome, FlipOutcome};
+    use crate::ui::state::{AppState, Tile, TileStatus};
+
+    fn tile(value: &str) -> Tile {
+        Tile {
+            value: value.to_string(),
+            status: TileStatus::Flipped,
+        }
+    }
+
+    #[test]
+    fn trio_match_requires_all_three_values_to_match() {
+        let mut st = AppState::default();
+        st.match_size = 3;
+        st.tiles = vec![tile("A"), tile("B"), tile("A")];
+
+        let outcome = evaluate_flip_outcome(&st, &[0, 1, 2], 2);
+
+        assert!(matches!(outcome, FlipOutcome::Mismatch));
+    }
+
+    #[test]
+    fn trio_match_accepts_three_equal_values() {
+        let mut st = AppState::default();
+        st.match_size = 3;
+        st.tiles = vec![tile("A"), tile("A"), tile("A")];
+
+        let outcome = evaluate_flip_outcome(&st, &[0, 1, 2], 2);
+
+        assert!(matches!(outcome, FlipOutcome::CompleteMatch));
     }
 }

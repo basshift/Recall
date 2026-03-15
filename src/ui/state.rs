@@ -1,5 +1,6 @@
 use gtk4 as gtk;
 use libadwaita as adw;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TileStatus {
@@ -26,14 +27,13 @@ pub enum Difficulty {
 }
 
 impl Difficulty {
-    pub fn config(self) -> (i32, i32, usize) {
+    pub fn fixed_config(self) -> Option<(i32, i32, usize)> {
         match self {
-            Difficulty::Easy => (3, 4, 2),
-            Difficulty::Medium => (4, 6, 2),
-            Difficulty::Hard => (6, 7, 2),
-            Difficulty::Impossible => (6, 8, 2),
-            Difficulty::Trio => (6, 7, 3),
-            Difficulty::Infinite => (3, 4, 2),
+            Difficulty::Easy => Some((3, 4, 2)),
+            Difficulty::Medium => Some((4, 6, 2)),
+            Difficulty::Hard => Some((6, 7, 2)),
+            Difficulty::Impossible => Some((6, 8, 2)),
+            Difficulty::Trio | Difficulty::Infinite => None,
         }
     }
 
@@ -49,7 +49,26 @@ impl Difficulty {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
+const SYMBOL_POOL: &[&str] = &[
+    "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸",
+    "🐵", "🐔", "🐦", "🐤", "🐣", "🦆", "🦅", "🐗", "🐴", "🦄", "🐝", "🪲", "🦋", "🐌",
+    "🐞", "🐢", "🦎", "🐙", "🦑", "🦐", "🦞", "🦀", "🐠", "🐟", "🐡", "🐬", "🐳", "🦈",
+    "🐊", "🦓", "🦒", "🐘", "🦛", "🦏", "🦬", "🐪", "🐫", "🦙", "🦘", "🦥", "🦦", "🦫",
+    "🦭", "🦚", "🦜", "🪿", "🦢", "🦩", "🐐", "🐏", "🍏", "🍎", "🍐", "🍊", "🍋", "🍌",
+    "🍉", "🍇", "🍓", "🫐", "🍒", "🍑", "🥭", "🍍", "🥥", "🥝", "🍅", "🥑", "🥕", "🌽",
+    "🥔", "🍠", "🥦", "🥬", "🥒", "🌶️", "🫑", "🍆", "🍄", "🥜", "🫘", "🍞", "🥐", "🥨",
+    "🧀", "🥚", "🍳", "🥞", "🧇", "🍔", "🍕", "🌮", "🌯", "🍜", "🍣", "⚽", "🏀", "🏈",
+    "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🥊",
+    "🥋", "⛳", "🏹", "🛹", "🛼", "🥌", "🚴", "🏊", "🤽", "🎨", "🖌️", "🖍️", "🧵", "🧶",
+    "🧩", "♟️", "🎯", "🎲", "🃏", "🪁", "🎮", "🕹️", "🎧", "🎤", "🎸", "🎺", "🎷", "📷",
+    "📸", "📱", "💻", "⌨️", "🖥️", "🖨️", "🔍", "🔬", "🔭", "⚙️", "🧰", "🔧", "🔨", "🪛",
+    "🔩", "📚", "📓", "✏️", "🖊️", "📌", "📎", "🌞", "🌝", "🌎", "🧭", "🗺️", "🪐", "⭐",
+    "☀️", "⛅", "🌈", "🌊", "💧", "🔥", "⛰️", "🗻", "🌋", "🏝️", "🏜️", "🏞️", "🌳", "🌴",
+    "🌵", "🌱", "🍀", "🌿", "🌾", "🌷", "🌹", "🌺", "🌸", "🪻", "🪷", "🌻", "🚗", "🚕",
+    "🚌", "🚎", "🏎️", "🚓", "🚑", "🚒", "🚜", "🚲", "🛵", "🚀",
+];
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default, Deserialize, Serialize)]
 pub enum Rank {
     #[default]
     C,
@@ -213,7 +232,7 @@ impl Default for AppState {
             run_matches: 0,
             active_session_started: false,
             pending_new_game_selection: false,
-            victory_title_text: "Growing Strong!".to_string(),
+            victory_title_text: String::new(),
             victory_message_text: String::new(),
             victory_stats_text: String::new(),
             victory_rank: Rank::C,
@@ -223,6 +242,22 @@ impl Default for AppState {
 }
 
 impl AppState {
+    fn apply_grid_config(&mut self, cols: i32, rows: i32, match_size: usize) {
+        self.grid_cols = cols;
+        self.grid_rows = rows;
+        self.match_size = match_size;
+    }
+
+    fn config_for_current_difficulty(&self, difficulty: Difficulty) -> (i32, i32, usize) {
+        match difficulty {
+            Difficulty::Trio => Self::trio_config(self.trio_level),
+            Difficulty::Infinite => Self::infinite_config(self.infinite_level),
+            _ => difficulty
+                .fixed_config()
+                .expect("fixed config required for classic difficulties"),
+        }
+    }
+
     fn trio_config(level: u8) -> (i32, i32, usize) {
         match level.clamp(1, 4) {
             1 => (4, 6, 3),
@@ -249,21 +284,12 @@ impl AppState {
 
     pub fn set_difficulty(&mut self, difficulty: Difficulty) {
         self.difficulty = difficulty;
-        self.impossible_mismatch_count = 0;
-        self.impossible_punish_stage = 0;
-        self.impossible_last_first_index = None;
-        self.impossible_same_first_streak = 0;
+        self.reset_impossible_pressure();
         if difficulty == Difficulty::Infinite {
             self.infinite_round = 1;
         }
-        let (cols, rows, match_size) = match difficulty {
-            Difficulty::Trio => Self::trio_config(self.trio_level),
-            Difficulty::Infinite => Self::infinite_config(self.infinite_level),
-            _ => difficulty.config(),
-        };
-        self.grid_cols = cols;
-        self.grid_rows = rows;
-        self.match_size = match_size;
+        let (cols, rows, match_size) = self.config_for_current_difficulty(difficulty);
+        self.apply_grid_config(cols, rows, match_size);
         self.reset_game();
     }
 
@@ -271,9 +297,7 @@ impl AppState {
         self.trio_level = level.clamp(1, 4);
         if self.difficulty == Difficulty::Trio {
             let (cols, rows, match_size) = Self::trio_config(self.trio_level);
-            self.grid_cols = cols;
-            self.grid_rows = rows;
-            self.match_size = match_size;
+            self.apply_grid_config(cols, rows, match_size);
             self.reset_game();
         }
     }
@@ -282,9 +306,7 @@ impl AppState {
         self.infinite_level = level.clamp(1, 4);
         if self.difficulty == Difficulty::Infinite {
             let (cols, rows, match_size) = Self::infinite_config(self.infinite_level);
-            self.grid_cols = cols;
-            self.grid_rows = rows;
-            self.match_size = match_size;
+            self.apply_grid_config(cols, rows, match_size);
             self.reset_game();
         }
     }
@@ -292,9 +314,7 @@ impl AppState {
     pub fn apply_infinite_level_without_reset(&mut self, level: u8) {
         self.infinite_level = level.clamp(1, 4);
         let (cols, rows, match_size) = Self::infinite_config(self.infinite_level);
-        self.grid_cols = cols;
-        self.grid_rows = rows;
-        self.match_size = match_size;
+        self.apply_grid_config(cols, rows, match_size);
     }
 
     pub fn reset_infinite_round(&mut self) {
@@ -305,6 +325,10 @@ impl AppState {
         self.infinite_round = self.infinite_round.saturating_add(1);
     }
 
+    pub fn invalidate_callbacks(&mut self) {
+        self.game_id = self.game_id.wrapping_add(1);
+    }
+
     pub fn reset_impossible_pressure(&mut self) {
         self.impossible_mismatch_count = 0;
         self.impossible_punish_stage = 0;
@@ -313,14 +337,12 @@ impl AppState {
     }
 
     pub fn reshuffle_hidden_tiles(&mut self) {
-        use rand::seq::SliceRandom;
-        let mut hidden_indices = Vec::new();
-        let mut hidden_values = Vec::new();
+        use rand::Rng;
 
+        let mut hidden_indices = Vec::new();
         for (idx, tile) in self.tiles.iter().enumerate() {
             if tile.status == TileStatus::Hidden {
                 hidden_indices.push(idx);
-                hidden_values.push(tile.value.clone());
             }
         }
 
@@ -329,15 +351,27 @@ impl AppState {
         }
 
         let mut rng = rand::rng();
-        hidden_values.shuffle(&mut rng);
+        for shuffle_end in (1..hidden_indices.len()).rev() {
+            let swap_pos = rng.random_range(0..=shuffle_end);
+            if swap_pos == shuffle_end {
+                continue;
+            }
 
-        for (idx, value) in hidden_indices.into_iter().zip(hidden_values.into_iter()) {
-            self.tiles[idx].value = value;
+            let left_index = hidden_indices[shuffle_end];
+            let right_index = hidden_indices[swap_pos];
+            let (first, second) = if left_index < right_index {
+                let (left, right) = self.tiles.split_at_mut(right_index);
+                (&mut left[left_index].value, &mut right[0].value)
+            } else {
+                let (left, right) = self.tiles.split_at_mut(left_index);
+                (&mut right[0].value, &mut left[right_index].value)
+            };
+            std::mem::swap(first, second);
         }
     }
 
     pub fn reset_game(&mut self) {
-        self.game_id = self.game_id.wrapping_add(1);
+        self.invalidate_callbacks();
         self.tiles.clear();
         self.flipped_indices.clear();
         self.lock_input = false;
@@ -348,240 +382,25 @@ impl AppState {
         }
 
         let total_tiles = (self.grid_cols * self.grid_rows) as usize;
-        let group_count = total_tiles / self.match_size;
         let remainder = total_tiles % self.match_size;
-
-        let symbols = [
-    "🐶",
-    "🐱",
-    "🐭",
-    "🐹",
-    "🐰",
-    "🦊",
-    "🐻",
-    "🐼",
-    "🐨",
-    "🐯",
-    "🦁",
-    "🐮",
-    "🐷",
-    "🐸",
-    "🐵",
-    "🐔",
-    "🐦",
-    "🐤",
-    "🐣",
-    "🦆",
-    "🦅",
-    "🐗",
-    "🐴",
-    "🦄",
-    "🐝",
-    "🪲",
-    "🦋",
-    "🐌",
-    "🐞",
-    "🐢",
-    "🦎",
-    "🐙",
-    "🦑",
-    "🦐",
-    "🦞",
-    "🦀",
-    "🐠",
-    "🐟",
-    "🐡",
-    "🐬",
-    "🐳",
-    "🦈",
-    "🐊",
-    "🦓",
-    "🦒",
-    "🐘",
-    "🦛",
-    "🦏",
-    "🦬",
-    "🐪",
-    "🐫",
-    "🦙",
-    "🦘",
-    "🦥",
-    "🦦",
-    "🦫",
-    "🦭",
-    "🦚",
-    "🦜",
-    "🪿",
-    "🦢",
-    "🦩",
-    "🐐",
-    "🐏",
-    "🍏",
-    "🍎",
-    "🍐",
-    "🍊",
-    "🍋",
-    "🍌",
-    "🍉",
-    "🍇",
-    "🍓",
-    "🫐",
-    "🍒",
-    "🍑",
-    "🥭",
-    "🍍",
-    "🥥",
-    "🥝",
-    "🍅",
-    "🥑",
-    "🥕",
-    "🌽",
-    "🥔",
-    "🍠",
-    "🥦",
-    "🥬",
-    "🥒",
-    "🌶️",
-    "🫑",
-    "🍆",
-    "🍄",
-    "🥜",
-    "🫘",
-    "🍞",
-    "🥐",
-    "🥨",
-    "🧀",
-    "🥚",
-    "🍳",
-    "🥞",
-    "🧇",
-    "🍔",
-    "🍕",
-    "🌮",
-    "🌯",
-    "🍜",
-    "🍣",
-    "⚽",
-    "🏀",
-    "🏈",
-    "⚾",
-    "🥎",
-    "🎾",
-    "🏐",
-    "🏉",
-    "🥏",
-    "🎱",
-    "🏓",
-    "🏸",
-    "🏒",
-    "🏑",
-    "🥍",
-    "🏏",
-    "🥊",
-    "🥋",
-    "⛳",
-    "🏹",
-    "🛹",
-    "🛼",
-    "🥌",
-    "🚴",
-    "🏊",
-    "🤽",
-    "🎨",
-    "🖌️",
-    "🖍️",
-    "🧵",
-    "🧶",
-    "🧩",
-    "♟️",
-    "🎯",
-    "🎲",
-    "🃏",
-    "🪁",
-    "🎮",
-    "🕹️",
-    "🎧",
-    "🎤",
-    "🎸",
-    "🎺",
-    "🎷",
-    "📷",
-    "📸",
-    "📱",
-    "💻",
-    "⌨️",
-    "🖥️",
-    "🖨️",
-    "🔍",
-    "🔬",
-    "🔭",
-    "⚙️",
-    "🧰",
-    "🔧",
-    "🔨",
-    "🪛",
-    "🔩",
-    "📚",
-    "📓",
-    "✏️",
-    "🖊️",
-    "📌",
-    "📎",
-    "🌞",
-    "🌝",
-    "🌎",
-    "🧭",
-    "🗺️",
-    "🪐",
-    "⭐",
-    "☀️",
-    "⛅",
-    "🌈",
-    "🌊",
-    "💧",
-    "🔥",
-    "⛰️",
-    "🗻",
-    "🌋",
-    "🏝️",
-    "🏜️",
-    "🏞️",
-    "🌳",
-    "🌴",
-    "🌵",
-    "🌱",
-    "🍀",
-    "🌿",
-    "🌾",
-    "🌷",
-    "🌹",
-    "🌺",
-    "🌸",
-    "🪻",
-    "🪷",
-    "🌻",
-    "🚗",
-    "🚕",
-    "🚌",
-    "🚎",
-    "🏎️",
-    "🚓",
-    "🚑",
-    "🚒",
-    "🚜",
-    "🚲",
-    "🛵",
-    "🚀",
-];
+        assert_eq!(
+            remainder,
+            0,
+            "grid config must divide evenly by match size"
+        );
+        let group_count = total_tiles / self.match_size;
+        assert!(
+            group_count <= SYMBOL_POOL.len(),
+            "grid config requires more unique symbols than available"
+        );
 
         use rand::seq::SliceRandom;
         let mut rng = rand::rng();
         let mut values = Vec::with_capacity(total_tiles);
 
-        let mut symbol_pool = symbols.to_vec();
+        let mut symbol_pool = SYMBOL_POOL.to_vec();
         symbol_pool.shuffle(&mut rng);
-        for i in 0..group_count {
-            let symbol = symbol_pool[i % symbol_pool.len()];
+        for symbol in symbol_pool.iter().take(group_count) {
             for _ in 0..self.match_size {
                 values.push(symbol);
             }
@@ -595,12 +414,69 @@ impl AppState {
                 value: value.to_string(),
             });
         }
+    }
+}
 
-        for _ in 0..remainder {
-            self.tiles.push(Tile {
-                status: TileStatus::Matched,
-                value: String::new(),
-            });
+#[cfg(test)]
+mod tests {
+    use super::{AppState, Difficulty};
+
+    #[test]
+    fn classic_difficulties_divide_evenly_by_match_size() {
+        for difficulty in [
+            Difficulty::Easy,
+            Difficulty::Medium,
+            Difficulty::Hard,
+            Difficulty::Impossible,
+        ] {
+            let (cols, rows, match_size) = difficulty
+                .fixed_config()
+                .expect("classic difficulty should have fixed config");
+            assert_eq!(((cols * rows) as usize) % match_size, 0);
+        }
+    }
+
+    #[test]
+    fn trio_levels_divide_evenly_by_match_size() {
+        for level in 1..=4 {
+            let (cols, rows, match_size) = AppState::trio_config(level);
+            assert_eq!(((cols * rows) as usize) % match_size, 0);
+        }
+    }
+
+    #[test]
+    fn infinite_levels_divide_evenly_by_match_size() {
+        for level in 1..=4 {
+            let (cols, rows, match_size) = AppState::infinite_config(level);
+            assert_eq!(((cols * rows) as usize) % match_size, 0);
+        }
+    }
+
+    #[test]
+    fn all_current_configs_fit_within_symbol_pool() {
+        for difficulty in [
+            Difficulty::Easy,
+            Difficulty::Medium,
+            Difficulty::Hard,
+            Difficulty::Impossible,
+        ] {
+            let (cols, rows, match_size) = difficulty
+                .fixed_config()
+                .expect("classic difficulty should have fixed config");
+            let group_count = (cols * rows) as usize / match_size;
+            assert!(group_count <= super::SYMBOL_POOL.len());
+        }
+
+        for level in 1..=4 {
+            let (cols, rows, match_size) = AppState::trio_config(level);
+            let group_count = (cols * rows) as usize / match_size;
+            assert!(group_count <= super::SYMBOL_POOL.len());
+        }
+
+        for level in 1..=4 {
+            let (cols, rows, match_size) = AppState::infinite_config(level);
+            let group_count = (cols * rows) as usize / match_size;
+            assert!(group_count <= super::SYMBOL_POOL.len());
         }
     }
 }

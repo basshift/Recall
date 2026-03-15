@@ -34,17 +34,17 @@ pub fn build_board_grid(state: &Rc<RefCell<AppState>>) -> gtk::Grid {
         st.dynamic_css_provider.clone()
     };
 
-    let (grid_cols, grid_rows) = {
-        let st = state.borrow();
-        (st.grid_cols, st.grid_rows)
-    };
-
     let update_styles = {
+        let state = state.clone();
         let css_provider = css_provider.clone();
         move |grid: &gtk::Grid| {
             let width = grid.allocated_width();
             let height = grid.allocated_height();
             if width > 0 && height > 0 {
+                let (grid_cols, grid_rows) = {
+                    let st = state.borrow();
+                    (st.grid_cols.max(1), st.grid_rows.max(1))
+                };
                 let grid_cells = grid_cols.max(grid_rows).max(1);
                 let approx_cell = width.min(height) / grid_cells;
                 let tile_gap =
@@ -92,6 +92,11 @@ pub fn build_board_grid(state: &Rc<RefCell<AppState>>) -> gtk::Grid {
     });
 
     let mut buttons = Vec::new();
+
+    let (grid_cols, grid_rows) = {
+        let st = state.borrow();
+        (st.grid_cols, st.grid_rows)
+    };
 
     for i in 0..(grid_rows * grid_cols) {
         let index = i as usize;

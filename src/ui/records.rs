@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::io;
 use std::rc::Rc;
 use std::{fs, path::PathBuf};
 
@@ -7,6 +8,7 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use libadwaita as adw;
 use adw::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::i18n::tr;
 
@@ -110,76 +112,108 @@ fn parse_legacy_infinite_best(raw: &str) -> Option<InfiniteRecord> {
     })
 }
 
-fn encode_mode_record(record: &ModeRecord) -> String {
-    format!(
-        "{}|{}|{}|{}|{}",
-        record.level,
-        record.rank.as_str(),
-        record.time_secs,
-        record.precision_pct,
-        record.date_label.replace('\n', " ")
-    )
+#[derive(Default, Deserialize, Serialize)]
+struct RecordsFile {
+    #[serde(default)]
+    classic: Vec<ModeRecordWire>,
+    #[serde(default, alias = "tri")]
+    trio: Vec<ModeRecordWire>,
+    #[serde(default)]
+    infinite: Vec<InfiniteRecordWire>,
 }
 
-fn encode_infinite_record(record: &InfiniteRecord) -> String {
-    format!(
-        "{}|{}|{}|{}|{}",
-        record.round,
-        record.segment_level,
-        record.segment_survival,
-        record.time_secs,
-        record.date_label.replace('\n', " ")
-    )
+#[derive(Deserialize, Serialize)]
+struct ModeRecordWire {
+    level: u8,
+    time_secs: u32,
+    precision_pct: u8,
+    rank: Rank,
+    date_label: String,
 }
 
-fn json_escape(value: &str) -> String {
-    let mut out = String::with_capacity(value.len());
-    for ch in value.chars() {
-        match ch {
-            '\\' => out.push_str("\\\\"),
-            '"' => out.push_str("\\\""),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            _ => out.push(ch),
+#[derive(Deserialize, Serialize)]
+struct InfiniteRecordWire {
+    round: u32,
+    segment_level: u8,
+    segment_survival: u32,
+    time_secs: u32,
+    date_label: String,
+}
+
+impl From<ModeRecordWire> for ModeRecord {
+    fn from(value: ModeRecordWire) -> Self {
+        Self {
+            level: value.level,
+            time_secs: value.time_secs,
+            precision_pct: value.precision_pct,
+            rank: value.rank,
+            date_label: value.date_label,
         }
     }
-    out
 }
 
-fn json_unescape(value: &str) -> String {
-    let mut out = String::with_capacity(value.len());
-    let mut chars = value.chars();
-    while let Some(ch) = chars.next() {
-        if ch != '\\' {
-            out.push(ch);
-            continue;
-        }
-        match chars.next() {
-            Some('n') => out.push('\n'),
-            Some('r') => out.push('\r'),
-            Some('t') => out.push('\t'),
-            Some('\\') => out.push('\\'),
-            Some('"') => out.push('"'),
-            Some(other) => {
-                out.push('\\');
-                out.push(other);
-            }
-            None => out.push('\\'),
+impl From<&ModeRecord> for ModeRecordWire {
+    fn from(value: &ModeRecord) -> Self {
+        Self {
+            level: value.level,
+            time_secs: value.time_secs,
+            precision_pct: value.precision_pct,
+            rank: value.rank,
+            date_label: value.date_label.clone(),
         }
     }
-    out
 }
 
-fn parse_json_entry_line(raw: &str) -> Option<String> {
-    let mut line = raw.trim();
-    if line.ends_with(',') {
-        line = &line[..line.len().saturating_sub(1)];
+impl From<InfiniteRecordWire> for InfiniteRecord {
+    fn from(value: InfiniteRecordWire) -> Self {
+        Self {
+            round: value.round,
+            segment_level: value.segment_level,
+            segment_survival: value.segment_survival,
+            time_secs: value.time_secs,
+            date_label: value.date_label,
+        }
     }
-    if !line.starts_with('"') || !line.ends_with('"') || line.len() < 2 {
-        return None;
+}
+
+impl From<&InfiniteRecord> for InfiniteRecordWire {
+    fn from(value: &InfiniteRecord) -> Self {
+        Self {
+            round: value.round,
+            segment_level: value.segment_level,
+            segment_survival: value.segment_survival,
+            time_secs: value.time_secs,
+            date_label: value.date_label.clone(),
+        }
     }
-    Some(json_unescape(&line[1..line.len() - 1]))
+}
+
+impl From<RecordsFile> for PlayerRecords {
+    fn from(value: RecordsFile) -> Self {
+        Self {
+            classic: value.classic.into_iter().map(ModeRecord::from).collect(),
+            trio: value.trio.into_iter().map(ModeRecord::from).collect(),
+            infinite: value
+                .infinite
+                .into_iter()
+                .map(InfiniteRecord::from)
+                .collect(),
+        }
+    }
+}
+
+impl From<&PlayerRecords> for RecordsFile {
+    fn from(value: &PlayerRecords) -> Self {
+        Self {
+            classic: value.classic.iter().map(ModeRecordWire::from).collect(),
+            trio: value.trio.iter().map(ModeRecordWire::from).collect(),
+            infinite: value
+                .infinite
+                .iter()
+                .map(InfiniteRecordWire::from)
+                .collect(),
+        }
+    }
 }
 
 fn time_suffix_label(text: &str) -> gtk::Label {
@@ -246,181 +280,72 @@ fn load_legacy_records(raw: &str) -> PlayerRecords {
 }
 
 fn load_json_records(raw: &str) -> Option<PlayerRecords> {
-    #[derive(Clone, Copy)]
-    enum Section {
-        Classic,
-        Trio,
-        Infinite,
-    }
-
-    let mut section: Option<Section> = None;
-    let mut records = PlayerRecords::default();
-    let mut saw_section = false;
-
-    for line in raw.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed == "{" || trimmed == "}" {
-            continue;
-        }
-        if trimmed.starts_with("\"classic\"") {
-            saw_section = true;
-            section = if trimmed.ends_with("[]") || trimmed.ends_with("[],") {
-                None
-            } else {
-                Some(Section::Classic)
-            };
-            continue;
-        }
-        if trimmed.starts_with("\"trio\"") || trimmed.starts_with("\"tri\"") {
-            saw_section = true;
-            section = if trimmed.ends_with("[]") || trimmed.ends_with("[],") {
-                None
-            } else {
-                Some(Section::Trio)
-            };
-            continue;
-        }
-        if trimmed.starts_with("\"infinite\"") {
-            saw_section = true;
-            section = if trimmed.ends_with("[]") || trimmed.ends_with("[],") {
-                None
-            } else {
-                Some(Section::Infinite)
-            };
-            continue;
-        }
-        if trimmed == "]" || trimmed == "]," {
-            section = None;
-            continue;
-        }
-
-        let active_section = section?;
-        let entry_line = parse_json_entry_line(trimmed)?;
-        match active_section {
-            Section::Classic => {
-                if let Some(entry) = parse_mode_record(&entry_line) {
-                    records.classic.push(entry);
-                } else {
-                    return None;
-                }
-            }
-            Section::Trio => {
-                if let Some(entry) = parse_mode_record(&entry_line) {
-                    records.trio.push(entry);
-                } else {
-                    return None;
-                }
-            }
-            Section::Infinite => {
-                if let Some(entry) = parse_infinite_record(&entry_line) {
-                    records.infinite.push(entry);
-                } else {
-                    return None;
-                }
-            }
-        }
-    }
-
-    if section.is_some() || !saw_section {
-        return None;
-    }
-
-    Some(records)
-}
-
-fn serialize_legacy_records(records: &PlayerRecords) -> String {
-    let mut out = String::new();
-    for entry in &records.classic {
-        out.push_str("classic_entry=");
-        out.push_str(&encode_mode_record(entry));
-        out.push('\n');
-    }
-    for entry in &records.trio {
-        out.push_str("trio_entry=");
-        out.push_str(&encode_mode_record(entry));
-        out.push('\n');
-    }
-    for entry in &records.infinite {
-        out.push_str("infinite_entry=");
-        out.push_str(&encode_infinite_record(entry));
-        out.push('\n');
-    }
-    out
+    let records_file: RecordsFile = serde_json::from_str(raw).ok()?;
+    Some(records_file.into())
 }
 
 fn serialize_json_records(records: &PlayerRecords) -> String {
-    let mut out = String::new();
-    out.push_str("{\n");
-    out.push_str("  \"classic\": [\n");
-    for (idx, entry) in records.classic.iter().enumerate() {
-        let suffix = if idx + 1 == records.classic.len() { "" } else { "," };
-        out.push_str("    \"");
-        out.push_str(&json_escape(&encode_mode_record(entry)));
-        out.push('"');
-        out.push_str(suffix);
-        out.push('\n');
-    }
-    out.push_str("  ],\n");
-    out.push_str("  \"trio\": [\n");
-    for (idx, entry) in records.trio.iter().enumerate() {
-        let suffix = if idx + 1 == records.trio.len() { "" } else { "," };
-        out.push_str("    \"");
-        out.push_str(&json_escape(&encode_mode_record(entry)));
-        out.push('"');
-        out.push_str(suffix);
-        out.push('\n');
-    }
-    out.push_str("  ],\n");
-    out.push_str("  \"infinite\": [\n");
-    for (idx, entry) in records.infinite.iter().enumerate() {
-        let suffix = if idx + 1 == records.infinite.len() { "" } else { "," };
-        out.push_str("    \"");
-        out.push_str(&json_escape(&encode_infinite_record(entry)));
-        out.push('"');
-        out.push_str(suffix);
-        out.push('\n');
-    }
-    out.push_str("  ]\n");
-    out.push_str("}\n");
-    out
+    serde_json::to_string_pretty(&RecordsFile::from(records))
+        .expect("failed to serialize records file")
 }
 
 pub fn load_records() -> PlayerRecords {
-    let mut records = PlayerRecords::default();
-
     if let Some(path) = records_path()
-        && let Ok(raw) = fs::read_to_string(path)
+        && let Ok(raw) = fs::read_to_string(&path)
     {
         if let Some(parsed) = load_json_records(&raw) {
-            records = parsed;
+            return parsed;
         } else if let Some(legacy_path) = legacy_records_path()
             && let Ok(legacy_raw) = fs::read_to_string(legacy_path)
         {
-            records = load_legacy_records(&legacy_raw);
+            let records = load_legacy_records(&legacy_raw);
+            if let Err(err) = migrate_legacy_records(&records) {
+                eprintln!("warning: failed to migrate legacy records: {err}");
+            }
+            return records;
         }
+
+        eprintln!(
+            "warning: failed to parse records file; keeping current file untouched: {}",
+            path.display()
+        );
+        return PlayerRecords::default();
     } else if let Some(path) = legacy_records_path()
         && let Ok(raw) = fs::read_to_string(path)
     {
-        records = load_legacy_records(&raw);
+        let records = load_legacy_records(&raw);
+        if let Err(err) = migrate_legacy_records(&records) {
+            eprintln!("warning: failed to migrate legacy records: {err}");
+        }
+        return records;
     }
 
-    save_records(&records);
-    records
+    PlayerRecords::default()
 }
 
-fn save_records(records: &PlayerRecords) {
-    if let Some(path) = legacy_records_path() {
-        if let Some(parent) = path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-        let _ = fs::write(path, serialize_legacy_records(records));
+fn save_records(records: &PlayerRecords) -> io::Result<()> {
+    let json_path = match records_path() {
+        Some(path) => path,
+        None => return Ok(()),
+    };
+    if let Some(parent) = json_path.parent() {
+        fs::create_dir_all(parent)?;
     }
-    if let Some(path) = records_path() {
-        if let Some(parent) = path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-        let _ = fs::write(path, serialize_json_records(records));
+    fs::write(json_path, serialize_json_records(records))?;
+
+    Ok(())
+}
+
+fn migrate_legacy_records(records: &PlayerRecords) -> io::Result<()> {
+    save_records(records)?;
+
+    if let Some(path) = legacy_records_path()
+        && path.exists()
+    {
+        fs::remove_file(path)?;
     }
+
+    Ok(())
 }
 
 fn sort_mode_records(entries: &mut [ModeRecord]) {
@@ -614,7 +539,9 @@ pub fn register_non_infinite_result(st: &mut AppState) {
             st.records.classic.drain(0..overflow);
         }
     }
-    save_records(&st.records);
+    if let Err(err) = save_records(&st.records) {
+        eprintln!("warning: failed to save records: {err}");
+    }
 
     st.victory_title_text = match rank {
         Rank::S => tr("Flawless Memory!"),
@@ -669,13 +596,17 @@ pub fn register_infinite_run_result(st: &mut AppState) {
     if overflow > 0 {
         st.records.infinite.drain(0..overflow);
     }
-    save_records(&st.records);
+    if let Err(err) = save_records(&st.records) {
+        eprintln!("warning: failed to save records: {err}");
+    }
 }
 
 pub fn reset_local_records(state: &Rc<RefCell<AppState>>) {
     let mut st = state.borrow_mut();
     st.records = PlayerRecords::default();
-    save_records(&st.records);
+    if let Err(err) = save_records(&st.records) {
+        eprintln!("warning: failed to reset local records: {err}");
+    }
 }
 
 pub fn show_memory_dialog(state: &Rc<RefCell<AppState>>, app: &adw::Application) -> adw::Dialog {
@@ -798,6 +729,28 @@ mod tests {
         assert_eq!(infinite.segment_level, 4);
         assert_eq!(infinite.segment_survival, 1);
         assert_eq!(infinite.time_secs, 220);
+    }
+
+    #[test]
+    fn json_loader_accepts_generic_pretty_json() {
+        let raw = r#"{
+  "classic":[
+    {
+      "level": 2,
+      "time_secs": 70,
+      "precision_pct": 92,
+      "rank": "A",
+      "date_label": "2026-03-01 10:00"
+    }
+  ],
+  "trio": [],
+  "infinite": []
+}"#;
+
+        let parsed = load_json_records(raw).expect("pretty json should parse");
+        assert_eq!(parsed.classic.len(), 1);
+        assert_eq!(parsed.classic[0].level, 2);
+        assert!(parsed.classic[0].rank == Rank::A);
     }
 
     #[test]

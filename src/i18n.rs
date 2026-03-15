@@ -1,29 +1,23 @@
-use std::ffi::{CStr, CString};
-use std::os::raw::{c_char, c_int};
 use std::path::PathBuf;
 
-pub const GETTEXT_PACKAGE: &str = "io.github.basshift.Recall";
-const LC_ALL: c_int = 6;
+use gettextrs::{
+    LocaleCategory, bind_textdomain_codeset, bindtextdomain, dgettext, setlocale, textdomain,
+};
 
-unsafe extern "C" {
-    fn setlocale(category: c_int, locale: *const c_char) -> *mut c_char;
-    fn bindtextdomain(domainname: *const c_char, dirname: *const c_char) -> *mut c_char;
-    fn bind_textdomain_codeset(domainname: *const c_char, codeset: *const c_char) -> *mut c_char;
-    fn textdomain(domainname: *const c_char) -> *mut c_char;
-    fn dgettext(domainname: *const c_char, msgid: *const c_char) -> *mut c_char;
-}
+pub const GETTEXT_PACKAGE: &str = "io.github.basshift.Recall";
 
 pub fn init() {
-    let domain = CString::new(GETTEXT_PACKAGE).expect("invalid gettext domain");
     let locale_dir = std::env::var("RECALL_LOCALEDIR").unwrap_or_else(|_| default_locale_dir());
-    let locale_dir = CString::new(locale_dir).expect("invalid locale dir");
-    let utf8 = CString::new("UTF-8").expect("invalid codeset");
 
-    unsafe {
-        setlocale(LC_ALL, c"".as_ptr());
-        bindtextdomain(domain.as_ptr(), locale_dir.as_ptr());
-        bind_textdomain_codeset(domain.as_ptr(), utf8.as_ptr());
-        textdomain(domain.as_ptr());
+    setlocale(LocaleCategory::LcAll, "");
+    if bindtextdomain(GETTEXT_PACKAGE, locale_dir).is_err() {
+        eprintln!("warning: failed to bind gettext domain to locale dir");
+    }
+    if bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8").is_err() {
+        eprintln!("warning: failed to bind gettext domain to UTF-8 codeset");
+    }
+    if textdomain(GETTEXT_PACKAGE).is_err() {
+        eprintln!("warning: failed to activate gettext domain");
     }
 }
 
@@ -38,13 +32,10 @@ fn default_locale_dir() -> String {
 }
 
 pub fn tr(message: &str) -> String {
-    let domain = CString::new(GETTEXT_PACKAGE).expect("invalid gettext domain");
-    let msg = CString::new(message).unwrap_or_else(|_| CString::new("").expect("empty cstring"));
-    unsafe {
-        let translated = dgettext(domain.as_ptr(), msg.as_ptr());
-        if translated.is_null() {
-            return message.to_string();
-        }
-        CStr::from_ptr(translated).to_string_lossy().into_owned()
+    if message.contains('\0') {
+        eprintln!("warning: gettext key contains interior null byte");
+        return message.to_string();
     }
+
+    dgettext(GETTEXT_PACKAGE, message)
 }

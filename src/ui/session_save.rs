@@ -1,4 +1,5 @@
 use std::fs;
+use std::io;
 use std::path::PathBuf;
 
 use super::state::{AppState, Difficulty, Tile, TileStatus};
@@ -317,7 +318,10 @@ fn expected_saved_run_tile_count(run: &SavedRun) -> usize {
             3 => (6, 7, 2),
             _ => (6, 8, 2),
         },
-        _ => run.difficulty.config(),
+        _ => run
+            .difficulty
+            .fixed_config()
+            .expect("classic difficulty should have fixed config"),
     };
     (cols * rows) as usize
 }
@@ -340,14 +344,13 @@ fn validate_saved_run(run: SavedRun) -> Option<SavedRun> {
     Some(run)
 }
 
-fn write_atomic(path: &PathBuf, data: &str) {
+fn write_atomic(path: &PathBuf, data: &str) -> io::Result<()> {
     if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
+        fs::create_dir_all(parent)?;
     }
     let tmp_path = path.with_extension("tmp");
-    if fs::write(&tmp_path, data).is_ok() {
-        let _ = fs::rename(&tmp_path, path);
-    }
+    fs::write(&tmp_path, data)?;
+    fs::rename(&tmp_path, path)
 }
 
 pub fn load_saved_run() -> Option<SavedRun> {
@@ -362,9 +365,9 @@ pub fn clear_saved_run() {
     }
 }
 
-pub fn save_current_run(st: &AppState) {
+pub fn save_current_run(st: &AppState) -> io::Result<()> {
     if !st.active_session_started || st.tiles.is_empty() {
-        return;
+        return Ok(());
     }
 
     // Never persist transient visual states (Flipped). If a run is saved mid-animation,
@@ -398,8 +401,9 @@ pub fn save_current_run(st: &AppState) {
     };
 
     if let Some(path) = save_path() {
-        write_atomic(&path, &serialize_saved_run(&run));
+        write_atomic(&path, &serialize_saved_run(&run))?;
     }
+    Ok(())
 }
 
 #[cfg(test)]
