@@ -9,7 +9,6 @@
 
 # Local logs
 /logs/
-/.grok/
 
 # Editor/OS noise
 .DS_Store
